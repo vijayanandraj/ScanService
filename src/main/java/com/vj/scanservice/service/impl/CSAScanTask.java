@@ -5,6 +5,7 @@ import com.vj.scanservice.dto.ScanRequest;
 import com.vj.scanservice.service.DotnetTask;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.concurrent.CompletableFuture;
 @Order(2)
 public class CSAScanTask implements DotnetTask {
 
+    @Async("customTaskExecutor")
     @Override
     public CompletableFuture<Result> execute(UUID requestId, ScanRequest scanRequest, Result previousResult) {
         log.info("Previous Task Result ==> {}", previousResult.getData());
