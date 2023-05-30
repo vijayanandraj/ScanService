@@ -4,6 +4,7 @@ package com.vj.scanservice.service.impl;
 import com.vj.scanservice.dto.ArtifactOutput;
 import com.vj.scanservice.dto.Result;
 import com.vj.scanservice.dto.ScanRequest;
+import com.vj.scanservice.service.JavaTask;
 import com.vj.scanservice.service.Task;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,7 +19,7 @@ import java.util.concurrent.CompletableFuture;
 
 @Component
 @Slf4j
-public class DownloadArtifactsTask implements Task {
+public class DownloadArtifactsTask implements JavaTask {
 
     @Value("${artifact.download.directory}")
     private String downloadDirectory;
