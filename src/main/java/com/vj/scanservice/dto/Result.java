@@ -12,5 +12,5 @@ import java.util.List;
 public class Result {
     private String spk;
     private String status;
-    private List<String> data;
+    private List<TaskResult> data;
 }

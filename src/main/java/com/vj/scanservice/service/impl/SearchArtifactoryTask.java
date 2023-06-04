@@ -2,15 +2,10 @@ package com.vj.scanservice.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.vj.scanservice.dto.Artifact;
-import com.vj.scanservice.dto.ArtifactOutput;
-import com.vj.scanservice.dto.Result;
-import com.vj.scanservice.dto.ScanRequest;
+import com.vj.scanservice.dto.*;
 import com.vj.scanservice.service.JavaTask;
-import com.vj.scanservice.service.Task;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
@@ -27,7 +22,7 @@ import java.util.regex.Pattern;
 public class SearchArtifactoryTask implements JavaTask {
 
 
-    @Value("${artifact.output.directory}")
+    @Value("${artifact.json.directory}")
     private String outputDirectory;
 
     Pattern pattern = Pattern.compile("(.+?)(-\\d+.*|_\\d+.*|\\.\\d+.*)\\.(ear|war|jar|zip)$");
@@ -60,13 +55,17 @@ public class SearchArtifactoryTask implements JavaTask {
 
                 // Prepare output list
                 List<ArtifactOutput> artifactOutputs = new ArrayList<>();
-                List<String> searchResult = new ArrayList<>();
-                for (Artifact artifact : uniqueArtifacts.values()) {
+                List<TaskResult> searchResult = new ArrayList<>();
+                for (Map.Entry<String, Artifact> entry : uniqueArtifacts.entrySet()){
+
+                    String fileKey = entry.getKey();
+                    Artifact artifact = entry.getValue();
                     ArtifactOutput artifactOutput = new ArtifactOutput();
                     artifactOutput.setAit(artifact.getProps().getAitNumber().get(0));
                     artifactOutput.setBuildCreated(artifact.getCreated());
                     artifactOutput.setDownloadPath(artifact.getPath());
-                    searchResult.add(artifact.getPath());
+                    TaskResult taskResult = new TaskResult(fileKey, artifact.getPath());
+                    searchResult.add(taskResult);
                     artifactOutput.setRepoUrl(artifact.getProps().getScmLocation().get(0));
                     artifactOutput.setSpk(artifact.getProps().getSpk().get(0));
                     artifactOutputs.add(artifactOutput);
@@ -91,7 +90,7 @@ public class SearchArtifactoryTask implements JavaTask {
         Map<String, Artifact> uniqueArtifacts = new HashMap<>();
 
         for (Artifact artifact : artifacts) {
-            String tileKey = getTileKeyFromPath(artifact.getPath());
+            String tileKey = getFileKeyFromPath(artifact.getPath());
             Artifact existingArtifact = uniqueArtifacts.get(tileKey);
             if (existingArtifact == null || artifact.getCreated().compareTo(existingArtifact.getCreated()) > 0) {
                 uniqueArtifacts.put(tileKey, artifact);
@@ -101,7 +100,7 @@ public class SearchArtifactoryTask implements JavaTask {
         return uniqueArtifacts;
     }
 
-    private String getTileKeyFromPath(String path) {
+    private String getFileKeyFromPath(String path) {
         Matcher matcher = pattern.matcher(path);
         if (matcher.find()) {
             return matcher.group(1) + "." + matcher.group(3);

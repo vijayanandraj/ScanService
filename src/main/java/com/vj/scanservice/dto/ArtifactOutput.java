@@ -9,4 +9,5 @@ public class ArtifactOutput {
     private String downloadPath;
     private String repoUrl;
     private String spk;
+    private String fileKey;
 }
