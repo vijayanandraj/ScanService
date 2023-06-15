@@ -1,0 +1,3 @@
+java -XX:+PrintCommandLineFlags -version
+
+java -Xmx24G -Xms24G -XX:+UseG1GC -jar your-application.jar
