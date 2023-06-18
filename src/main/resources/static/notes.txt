@@ -1,3 +1,25 @@
 java -XX:+PrintCommandLineFlags -version
 
 java -Xmx24G -Xms24G -XX:+UseG1GC -jar your-application.jar
+
+
+-XX:+AlwaysPreTouch
+
+   private static final List<String> VALID_EXTENSIONS = Arrays.asList(
+            ".cs", ".vb", ".xml", ".config", ".csproj", ".vbproj", ".resx", ".xaml",
+            ".aspx", ".ascx", ".master", ".ashx", ".asmx", ".sln", ".settings",
+            ".json", ".sql", ".cshtml", ".vbhtml", ".razor");
+
+    public static void main(String[] args) throws IOException {
+        Path startPath = Paths.get("/path/to/start/directory");
+        Files.walk(startPath)
+            .filter(Files::isRegularFile)
+            .filter(path -> VALID_EXTENSIONS.stream().anyMatch(ext -> path.toString().toLowerCase().endsWith(ext)))
+            .forEach(path -> {
+                try {
+                    processFile(path);
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            });
+    }
