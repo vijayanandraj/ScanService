@@ -23,3 +23,89 @@ java -Xmx24G -Xms24G -XX:+UseG1GC -jar your-application.jar
                 }
             });
     }
+
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class ScanProgress {
+    private final int totalTasks;
+    private final AtomicInteger completedTasks = new AtomicInteger(0);
+    private final AtomicInteger errorTasks = new AtomicInteger(0);
+    private final AtomicInteger runningTasks = new AtomicInteger(0);
+
+    public ScanProgress(int totalTasks) {
+        this.totalTasks = totalTasks;
+    }
+
+    public void taskStarted() {
+        runningTasks.incrementAndGet();
+    }
+
+    public void taskCompleted() {
+        completedTasks.incrementAndGet();
+        runningTasks.decrementAndGet();
+    }
+
+    public void taskError() {
+        errorTasks.incrementAndGet();
+        runningTasks.decrementAndGet();
+    }
+
+    public double getProgress() {
+        return (double) completedTasks.get() / totalTasks * 100;
+    }
+
+    public String getStatus() {
+        int yetToStart = totalTasks - completedTasks.get() - errorTasks.get() - runningTasks.get();
+        return "Total " + totalTasks + " Tasks, Completed ==> " + completedTasks.get() +
+               ", Running ==> " + runningTasks.get() + ", Error - " + errorTasks.get() +
+               ", Yet to Start ==> " + yetToStart;
+    }
+}
+
+
+@Override
+public CompletableFuture<Result> execute(UUID requestId, ScanRequest scanRequest, Result previousResult) {
+    try {
+        // Set status to STARTED
+        scanStatusService.updateScanStatus(requestId, "DOWNLOAD ARTIFACT STARTED", "DownloadArtifactsTask has started", scanRequest.getAitId(), scanRequest.getSpk());
+
+        List<TaskResult> artifacts = previousResult.getData();
+        List<CompletableFuture<TaskResult>> futures = new ArrayList<>();
+
+        for (TaskResult artifact : artifacts) {
+            progress.taskStarted(); // Call taskStarted here
+            futures.add(downloadService.downloadArtifact(artifact, scanRequest)
+                    .thenApply(result -> {
+                        // Notify the progress tracker when a task completes
+                        progress.taskCompleted();
+                        return result;
+                    })
+                    .exceptionally(ex -> {
+                        // Notify the progress tracker of an error
+                        progress.taskError();
+                        throw new RuntimeException("Failed to download artifact: " + artifact, ex);
+                    }));
+        }
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()]))
+                .exceptionally(ex -> {
+                    // Set status to ERROR
+                    scanStatusService.updateScanStatus(requestId, "ERROR", "Error in DownloadArtifactsTask: " + ex.getMessage(), null, scanRequest.getSpk());
+                    throw new RuntimeException("Failed DownloadArtifactsTask", ex);
+                });
+
+        List<TaskResult> downloadedFiles = futures.stream()
+                .map(CompletableFuture::join)
+                .collect(Collectors.toList());
+
+        // Set status to COMPLETED
+        scanStatusService.updateScanStatus(requestId, "COMPLETED", "DownloadArtifactsTask has completed", null, scanRequest.getSpk());
+
+        return CompletableFuture.completedFuture(new Result(scanRequest.getSpk(), "Completed DownloadArtifactsTask", downloadedFiles));
+
+    } catch (Exception e) {
+        // Set status to ERROR if anything goes wrong during setup
+        scanStatusService.updateScanStatus(requestId, "ERROR", "Error in DownloadArtifactsTask: " + e.getMessage(), null, scanRequest.getSpk());
+        throw new RuntimeException("Failed DownloadArtifactsTask", e);
+    }
+}
