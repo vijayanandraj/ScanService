@@ -109,3 +109,71 @@ public CompletableFuture<Result> execute(UUID requestId, ScanRequest scanRequest
         throw new RuntimeException("Failed DownloadArtifactsTask", e);
     }
 }
+
+
+@Component
+@Slf4j
+public class DownloadArtifactsTask implements JavaTask {
+
+    @Autowired
+    private DownloadService downloadService;
+
+    @Autowired
+    private ScanStatusService scanStatusService;
+
+    private Map<UUID, ScanProgress> progressMap = new ConcurrentHashMap<>();
+
+    @Override
+    public CompletableFuture<Result> execute(UUID requestId, ScanRequest scanRequest, Result previousResult) {
+        try {
+            // Create a ScanProgress object and store it in the map
+            List<TaskResult> artifacts = previousResult.getData();
+            ScanProgress progress = new ScanProgress(artifacts.size());
+            progressMap.put(requestId, progress);
+
+            // Set status to STARTED
+            scanStatusService.updateScanStatus(requestId, "DOWNLOAD ARTIFACT STARTED", "DownloadArtifactsTask has started", scanRequest.getAitId(), scanRequest.getSpk());
+
+            List<CompletableFuture<TaskResult>> futures = new ArrayList<>();
+
+            for (TaskResult artifact : artifacts) {
+                futures.add(downloadService.downloadArtifact(artifact, scanRequest)
+                        .thenApply(result -> {
+                            // Notify the progress tracker when a task completes
+                            progress.taskCompleted();
+                            return result;
+                        }));
+            }
+
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()]))
+                    .exceptionally(ex -> {
+                        // Set status to ERROR
+                        scanStatusService.updateScanStatus(requestId, "ERROR", "Error in DownloadArtifactsTask: " + ex.getMessage(), null, scanRequest.getSpk());
+                        throw new RuntimeException("Failed DownloadArtifactsTask", ex);
+                    });
+
+            List<TaskResult> downloadedFiles = futures.stream()
+                    .map(CompletableFuture::join)
+                    .collect(Collectors.toList());
+
+            // Set status to COMPLETED
+            scanStatusService.updateScanStatus(requestId, "COMPLETED", "DownloadArtifactsTask has completed", null, scanRequest.getSpk());
+
+            return CompletableFuture.completedFuture(new Result(scanRequest.getSpk(), "Completed DownloadArtifactsTask", downloadedFiles))
+                    .thenApply(result -> {
+                        // Remove the progress tracker when all tasks are complete
+                        progressMap.remove(requestId);
+                        return result;
+                    });
+
+        } catch (Exception e) {
+            // Set status to ERROR if anything goes wrong during setup
+            scanStatusService.updateScanStatus(requestId, "ERROR", "Error in DownloadArtifactsTask: " + e.getMessage(), null, scanRequest.getSpk());
+            throw new RuntimeException("Failed DownloadArtifactsTask", e);
+        }
+    }
+
+    public ScanProgress getProgress(UUID requestId) {
+        return progressMap.get(requestId);
+    }
+}
