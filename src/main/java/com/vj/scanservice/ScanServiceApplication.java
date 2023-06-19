@@ -2,6 +2,7 @@ package com.vj.scanservice;
 
 import com.vj.scanservice.dto.Result;
 import com.vj.scanservice.dto.ScanRequest;
+import com.vj.scanservice.service.ScanService;
 import com.vj.scanservice.service.impl.ScanPipelineService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
@@ -14,7 +15,7 @@ import java.util.UUID;
 public class ScanServiceApplication implements CommandLineRunner {
 
     @Autowired
-    private ScanPipelineService scanPipelineService;
+    private ScanService scanPipelineService;
 
     public static void main(String[] args) {
         SpringApplication.run(ScanServiceApplication.class, args);
@@ -28,8 +29,7 @@ public class ScanServiceApplication implements CommandLineRunner {
         dotnetScanRequest.setTechnology(String.valueOf(ScanPipelineService.TechnologyType.DOTNET));
 
         // Execute the pipeline and print the results
-        Result dotnetResult = scanPipelineService.startScanPipeline(UUID.randomUUID(), dotnetScanRequest).join();
-        System.out.println("DotNet pipeline result: " + dotnetResult);
+        scanPipelineService.startScan(dotnetScanRequest);
 
     }
 }

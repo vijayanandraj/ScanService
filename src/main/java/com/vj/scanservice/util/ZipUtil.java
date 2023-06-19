@@ -1,9 +1,8 @@
-package com.vj.scanservice;
+package com.vj.scanservice.util;
 
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;

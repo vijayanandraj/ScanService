@@ -4,6 +4,7 @@ import com.vj.scanservice.dto.Result;
 import com.vj.scanservice.dto.ScanRequest;
 import com.vj.scanservice.dto.TaskResult;
 import com.vj.scanservice.service.DotnetTask;
+import com.vj.scanservice.util.aop.HowManySeconds;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ import java.util.concurrent.CompletableFuture;
 public class DownloadCodeTask implements DotnetTask {
 
     @Override
+    @HowManySeconds
     public CompletableFuture<Result> execute(UUID requestId, ScanRequest scanRequest, Result previousResult) {
         List<TaskResult> data = new ArrayList<>();
         TaskResult csaScanTask = new TaskResult("Download Code Task - Dummy File Key", "Download Code Task - Path", "Download Code Task - Parent File");

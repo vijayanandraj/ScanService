@@ -66,7 +66,11 @@ public class SearchArtifactoryTask implements JavaTask {
                     artifactOutput.setDownloadPath(artifact.getPath());
                     TaskResult taskResult = new TaskResult(fileKey, artifact.getPath());
                     searchResult.add(taskResult);
-                    artifactOutput.setRepoUrl(artifact.getProps().getScmLocation().get(0));
+
+                    artifactOutput.setRepoUrl(Optional.ofNullable(artifact.getProps().getScmLocation())
+                            .map(locations -> locations.get(0))
+                            .orElse(null));
+                    //artifactOutput.setRepoUrl(artifact.getProps().getScmLocation().get(0));
                     artifactOutput.setSpk(artifact.getProps().getSpk().get(0));
                     artifactOutputs.add(artifactOutput);
                 }

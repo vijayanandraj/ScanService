@@ -11,10 +11,12 @@ import com.vj.scanservice.dto.ScanRequest;
 import com.vj.scanservice.service.DotnetTask;
 import com.vj.scanservice.service.JavaTask;
 import com.vj.scanservice.service.Task;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
+@Slf4j
 public class ScanPipelineService {
 
     public enum TechnologyType {
@@ -34,6 +36,7 @@ public class ScanPipelineService {
 
     public CompletableFuture<Result> startScanPipeline(UUID requestId, ScanRequest scanRequest) {
         TechnologyType techType = TechnologyType.valueOf(scanRequest.getTechnology());
+        log.info("Tech Type ==> {}", techType.toString());
         if (!tasks.containsKey(techType)) {
             throw new IllegalArgumentException("Unsupported technology: " + techType);
         }

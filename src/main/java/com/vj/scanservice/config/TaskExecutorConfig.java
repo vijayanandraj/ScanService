@@ -1,4 +1,4 @@
-package com.vj.scanservice;
+package com.vj.scanservice.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

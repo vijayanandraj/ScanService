@@ -15,9 +15,11 @@ public class ScanController {
     @Autowired
     private ScanService scanService;
 
+
     @PostMapping("/startScan")
     @Operation(summary = "Starts a scan")
     public ScanResponse startScan(@RequestBody ScanRequest request) {
+
         return scanService.startScan(request);
     }
 
