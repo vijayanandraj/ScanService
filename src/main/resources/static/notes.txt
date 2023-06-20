@@ -183,3 +183,24 @@ public class DownloadArtifactsTask implements JavaTask {
 public interface YourEntityRepository extends JpaRepository<YourEntity, Long> {
     List<YourEntity> findAllByOrderByCreatedDtDesc();
 }
+
+public static void addProjectsToMapping(String rootDirectory, Map<String, List<String>> projectMap) throws IOException {
+    Files.walk(Paths.get(rootDirectory))
+        .forEach(path -> {
+            if (path.toString().endsWith(".csproj") || path.toString().endsWith(".vbproj")) {
+                try {
+                    Files.walk(path.getParent())
+                        .filter(srcPath -> !Files.isDirectory(srcPath))  // Filter out directories
+                        .forEach(srcPath -> {
+                            List<String> value = Arrays.asList(path.toString(), path.getFileName().toString());
+                            projectMap.put(srcPath.toString(), value);
+                        });
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            } else {
+                // Perform your alternative logic here for each path that is not .csproj or .vbproj
+                // You can access path.getParent() here
+            }
+        });
+}
