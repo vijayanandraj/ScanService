@@ -177,3 +177,9 @@ public class DownloadArtifactsTask implements JavaTask {
         return progressMap.get(requestId);
     }
 }
+
+
+
+public interface YourEntityRepository extends JpaRepository<YourEntity, Long> {
+    List<YourEntity> findAllByOrderByCreatedDtDesc();
+}
