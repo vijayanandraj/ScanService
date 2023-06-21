@@ -204,3 +204,52 @@ public static void addProjectsToMapping(String rootDirectory, Map<String, List<S
             }
         });
 }
+
+import javax.servlet.*;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+public class SimpleCORSFilter implements Filter {
+
+    @Override
+    public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) throws IOException, ServletException {
+        HttpServletResponse response = (HttpServletResponse) res;
+        response.setHeader("Access-Control-Allow-Origin", "*");
+        response.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE, PUT");
+        response.setHeader("Access-Control-Max-Age", "3600");
+        response.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept, X-Requested-With, remember-me, Your-Custom-Header");
+        chain.doFilter(req, res);
+    }
+
+    @Override
+    public void init(FilterConfig filterConfig) {}
+
+    @Override
+    public void destroy() {}
+
+}
+
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
+
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public FilterRegistrationBean<SimpleCORSFilter> simpleCORSFilter() {
+        FilterRegistrationBean<SimpleCORSFilter> bean = new FilterRegistrationBean<>();
+
+        // Your CORS filter class here
+        bean.setFilter(new SimpleCORSFilter());
+
+        // Set the filter order to the highest precedence
+        bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
+
+        return bean;
+    }
+
+}
+
+
