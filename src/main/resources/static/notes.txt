@@ -252,4 +252,11 @@ public class AppConfig {
 
 }
 
+keytool -genkeypair -alias selfsigned -keyalg RSA -keysize 2048 -storetype PKCS12 -keystore selfsigned.pfx -validity 3650
+
+server.port= 8443
+server.ssl.key-store= classpath:selfsigned.pfx
+server.ssl.key-store-password= YourPassword
+server.ssl.key-store-type= PKCS12
+server.ssl.enabled= true
 
