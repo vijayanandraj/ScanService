@@ -1,3 +1,43 @@
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.deser.DeserializationProblemHandler;
+import java.io.IOException;
+
+public class SkipBadLinesHandler extends DeserializationProblemHandler {
+    @Override
+    public Object handleWeirdString(DeserializationContext ctxt, Class<?> targetType, String valueToConvert, String failureMsg) throws IOException {
+        // Log out the error or keep track of skipped lines
+        System.err.println("Skipping invalid row: " + failureMsg);
+        return NOT_HANDLED;
+    }
+
+    @Override
+    public Object handleWeirdNumber(DeserializationContext ctxt, Class<?> targetType, Number valueToConvert, String failureMsg) throws IOException {
+        System.err.println("Skipping invalid row: " + failureMsg);
+        return NOT_HANDLED;
+    }
+}
+
+import org.apache.commons.io.FileUtils;
+import java.io.File;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
+
+public class CsvPreProcessor {
+
+    public static void main(String[] args) throws Exception {
+        File file = new File("path_to_your_file.csv");
+        byte[] fileContent = FileUtils.readFileToByteArray(file);
+
+        CharsetDecoder utf8Decoder = Charset.forName("UTF-8").newDecoder();
+        utf8Decoder.onMalformedInput(CodingErrorAction.IGNORE);
+
+        String result = utf8Decoder.decode(ByteBuffer.wrap(fileContent)).toString();
+        
+        FileUtils.writeStringToFile(file, result, "UTF-8");
+    }
+}
+
 java -XX:+PrintCommandLineFlags -version
 
 java -Xmx24G -Xms24G -XX:+UseG1GC -jar your-application.jar
