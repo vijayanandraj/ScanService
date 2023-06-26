@@ -260,3 +260,39 @@ server.ssl.key-store-password= YourPassword
 server.ssl.key-store-type= PKCS12
 server.ssl.enabled= true
 
+@Configuration
+@EnableRetry
+public class AppConfig {
+   // your beans and configuration here
+}
+
+
+@Service
+public class DownloadService {
+
+    @Retryable(
+      value = {ServiceException.class},
+      maxAttempts = 5,
+      backoff = @Backoff(delay = 5000))
+    public void downloadArtifact() {
+        // Your download logic here
+        // If ServiceException is thrown, Spring Retry will handle the retry operation
+    }
+
+    @Recover
+    public void recover(ServiceException e) {
+        // recovery logic here
+    }
+}
+
+<dependency>
+    <groupId>org.springframework.retry</groupId>
+    <artifactId>spring-retry</artifactId>
+    <version>1.3.1</version>
+</dependency>
+
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-aspects</artifactId>
+    <version>5.3.10</version>
+</dependency>
