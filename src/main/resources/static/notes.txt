@@ -337,6 +337,19 @@ public class DownloadService {
     <version>5.3.10</version>
 </dependency>
 
+MATDB is a  Python library that facilitates smooth and efficient interaction with a variety of databases including, but not limited to, MySQL/MariaDB and SQL Server.
+What sets it apart from other database libraries like Encode’s Databases is its support for synchronous communication and its compatibility with enterprise-level databases like SQL Server.
+One of the standout features of MatDB is its pluggable design. This means that the library has a modular design, allowing developers to easily add support for additional databases such as Oracle, PostgreSQL, and more.
+
+"TurboMigrate: A High-Performance Data Migration Framework for Large-Scale Database Transfers"
+* Leveraging Pandas data streaming and a multi-threaded approach, this migration framework adeptly handles large-scale,
+one-time data migrations between MariaDB and SQL Server by processing data in manageable chunks, ensuring memory efficiency.
+
+* With robust error handling, transaction support, and parallel processing, the framework guarantees data integrity, accelerates migration speed,
+and provides customization options, making it an ideal solution for migrating extensive datasets with minimal resource consumption.
+The framework is pluggable by design with support for additional databases envisioned in future.
+
+
 Title: "Automated Software Modernization Readiness Assessment and Prioritization System"
 
 Abstract:
