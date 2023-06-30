@@ -325,6 +325,39 @@ public class DownloadService {
     }
 }
 
+import java.io.IOException;
+
+public class ProcessBuilderExample {
+
+    public static void main(String[] args) {
+        // Create a new ProcessBuilder
+        ProcessBuilder processBuilder = new ProcessBuilder();
+
+        // Get the environment of the process
+        // The environment is returned as a map which can be modified
+        // The changes to this map will be reflected in the environment of the process
+        // that is started by this ProcessBuilder
+        java.util.Map<String, String> environment = processBuilder.environment();
+
+        // Modify the PATH environment variable
+        String pathValue = environment.get("PATH");
+        String newPathValue = "/path/to/your/binaries:" + pathValue;
+        environment.put("PATH", newPathValue);
+
+        // Set the command you want to execute
+        // For example, a shell command
+        processBuilder.command("bash", "-c", "echo $PATH");
+
+        // Start the process
+        try {
+            Process process = processBuilder.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
 <dependency>
     <groupId>org.springframework.retry</groupId>
     <artifactId>spring-retry</artifactId>
