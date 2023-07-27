@@ -388,3 +388,34 @@ Title: "Automated Software Modernization Readiness Assessment and Prioritization
 Abstract:
 
 An automated system and method for the evaluation and prioritization of software modernization projects through a scoring engine that calculates a modernization readiness score. The scoring engine analyzes software applications by considering a range of factors indicative of an application’s readiness for transition to modern or cloud-native architectures. Code scans are employed to identify Cloud Blockers based on the 12-factor app methodology and platform blockers such as unsupported or proprietary technologies. Additionally, the engine integrates data retrieved from Configuration Management Databases (CMDBs) and surveys to assess integration points and APIs, usage of outdated or proprietary technologies, statefulness, and scalability issues. The modernization readiness score, synthesized from these parameters, is combined with business criticality measures to classify and rank software modernization projects. The results are visualized in a quadrant graph, providing a comprehensive and strategic view of the readiness and business criticality of each application. This graph categorizes applications into four groups: low-hanging fruits, ideal candidates, deprioritized applications, and potential candidates, thereby facilitating informed decision-making for software modernization planning.
+
+import java.io.IOException;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+
+public class JarFileDeleter {
+
+    public static void main(String[] args) {
+        Path startPath = Paths.get("path_to_your_directory"); // replace with your directory
+        try {
+            Files.walkFileTree(startPath, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    if (file.toString().endsWith(".jar")) {
+                        Files.delete(file);
+                        System.out.println("Deleted file: " + file.toString());
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+                    System.err.printf("Unable to delete: %s: %s%n", file, exc);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
