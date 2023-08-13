@@ -421,13 +421,12 @@ public class JarFileDeleter {
 }
 
 
-import re
-
 def get_language(build_tool):
     # Define a dictionary to map build tools to their respective languages
     build_tool_map = {
         "maven": "Java",
         "gradle": "Java",
+        "ant":"Java",
         "npm": "JavaScript",
         "yarn": "JavaScript",
         "pip": "Python",
@@ -438,21 +437,15 @@ def get_language(build_tool):
         "mix": "Elixir"
     }
 
-    # Use a regex to extract the tool name without version or extra details
-    # This regex captures words before the first dash followed by a digit, which is often a version indicator.
-    # match = re.match(r'(\w+)(?=-\d|$)', build_tool)
-    # match = re.match(r'(\w+)(?=[-_]\d|$)', build_tool)
-    match = re.search(r'^([a-zA-Z]+)', build_tool)
-    tool_name = match.group(1) if match else build_tool
+    # If the exact build tool string is in the dictionary, return the language
+    if build_tool.lower() in build_tool_map:
+        return build_tool_map[build_tool.lower()]
 
-    # Use the get() method to retrieve the value for a given key.
-    # If the key is not found, it will return "Unknown".
-    return build_tool_map.get(tool_name.lower(), "Unknown")
+    # Otherwise, use regex to extract tool name
+    match = re.search(r'([a-zA-Z]+)(?=[-_]\d|$)', build_tool)
+    if match:
+        tool_name = match.group(1)
+        return build_tool_map.get(tool_name.lower(), "Unknown")
 
-# Test the function
-print(get_language("maven"))           # Outputs: Java
-print(get_language("apache-maven-3.0.8"))  # Outputs: Java
-print(get_language("npm_3_1"))             # Outputs: JavaScript
-print(get_language("npm-6.14.4"))      # Outputs: JavaScript
-print(get_language("cargo-1.48.0"))    # Outputs: Rust
-print(get_language("unknown_tool"))    # Outputs: Unknown
+    return "Unknown"
+
