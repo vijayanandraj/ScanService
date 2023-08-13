@@ -437,15 +437,16 @@ def get_language(build_tool):
         "mix": "Elixir"
     }
 
-    # If the exact build tool string is in the dictionary, return the language
-    if build_tool.lower() in build_tool_map:
-        return build_tool_map[build_tool.lower()]
+    stripped_tool = re.sub(r'[-_]?v?\d+([._]\d+)*$', '', build_tool)
 
-    # Otherwise, use regex to extract tool name
-    match = re.search(r'([a-zA-Z]+)(?=[-_]\d|$)', build_tool)
-    if match:
-        tool_name = match.group(1)
-        return build_tool_map.get(tool_name.lower(), "Unknown")
+    # Check direct match first
+    if stripped_tool.lower() in build_tool_map:
+        return build_tool_map[stripped_tool.lower()]
 
-    return "Unknown"
+    # Progressively strip prefixes until a match is found
+    parts = stripped_tool.split('-')
+    for i in range(len(parts)):
+        possible_tool = '-'.join(parts[i:])
+        if possible_tool.lower() in build_tool_map:
+            return build_tool_map[possible_tool.lower()]
 
