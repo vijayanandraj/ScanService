@@ -495,3 +495,14 @@ def read_root():
 @app.get("/items/{item_id}")
 def read_item(item_id: int, query_param: str = None):
     return {"item_id": item_id, "query_param": query_param}
+
+
+i [Colleague's Name],
+
+I wanted to take a moment to express my gratitude for your consistent support and assistance. Even though we're on different teams, you've always been my go-to person for [specific area]. Your readiness to help and share your knowledge has made a significant impact on my work.
+
+Thank you for being such a valuable colleague. I genuinely appreciate it.
+
+Warm regards,
+[Your Name]
+
