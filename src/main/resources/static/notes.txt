@@ -1,508 +1,62 @@
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.deser.DeserializationProblemHandler;
-import java.io.IOException;
+# Importing pandas and recalculating the target number of cores
 
-public class SkipBadLinesHandler extends DeserializationProblemHandler {
-    @Override
-    public Object handleWeirdString(DeserializationContext ctxt, Class<?> targetType, String valueToConvert, String failureMsg) throws IOException {
-        // Log out the error or keep track of skipped lines
-        System.err.println("Skipping invalid row: " + failureMsg);
-        return NOT_HANDLED;
-    }
+import pandas as pd
 
-    @Override
-    public Object handleWeirdNumber(DeserializationContext ctxt, Class<?> targetType, Number valueToConvert, String failureMsg) throws IOException {
-        System.err.println("Skipping invalid row: " + failureMsg);
-        return NOT_HANDLED;
-    }
+data = {
+    'Server name': ['Server1', 'Server2', 'Server3', 'Server4', 'Server5', 'Server6', 'Server7', 'Server8'],
+    'Total Cores': [12, 12, 12, 12, 16, 16, 16, 16],
+    'March Utilization': [3.98, 2.98, 1.98, 10.98, 3.71, 4.98, 3.71, 16.07],
+    'April Utilization': [4.03, 5.03, 8.03, 45.50, 3.06, 7.50, 3.06, 24.21],
+    'May Utilization': [5.67, 8.67, 4.67, 3.67, 2.73, 3.67, 2.73, 23.67],
+    'June Utilization': [3.98, 12.98, 11.98, 4.98, 11.53, 4.98, 11.53, 4.98],
+    'July Utilization': [10.91, 12.91, 10.91, 2.91, 18.77, 2.91, 18.77, 2.91],
+    'August Utilization': [69.1, 0.74, 1.74, 3.28, 27.10, 3.28, 27.10, 33.28]
 }
 
-import org.apache.commons.io.FileUtils;
-import java.io.File;
-import java.nio.charset.Charset;
-import java.nio.charset.CharsetDecoder;
-import java.nio.charset.CodingErrorAction;
+#df = pd.read_excel("/path/to/your/excel/file.xlsx", sheet_name="Sheet1")
 
-public class CsvPreProcessor {
+df = pd.DataFrame(data)
 
-    public static void main(String[] args) throws Exception {
-        File file = new File("path_to_your_file.csv");
-        byte[] fileContent = FileUtils.readFileToByteArray(file);
+# Calculate monthly peak core utilization for each server
+for month in ['March Utilization', 'April Utilization', 'May Utilization', 'June Utilization', 'July Utilization', 'August Utilization']:
+    df[f'{month} Cores'] = df[month] * df['Total Cores']
 
-        CharsetDecoder utf8Decoder = Charset.forName("UTF-8").newDecoder();
-        utf8Decoder.onMalformedInput(CodingErrorAction.IGNORE);
+# Aggregate monthly peaks
+monthly_peaks = df[[f'{month} Cores' for month in ['March Utilization', 'April Utilization', 'May Utilization', 'June Utilization', 'July Utilization', 'August Utilization']]].sum()
 
-        String result = utf8Decoder.decode(ByteBuffer.wrap(fileContent)).toString();
-        
-        FileUtils.writeStringToFile(file, result, "UTF-8");
-    }
-}
+# Determine overall peak utilization
+overall_peak = monthly_peaks.max()
 
-java -XX:+PrintCommandLineFlags -version
+# Consider 20% headroom
+headroom = 0.20 * overall_peak
 
-java -Xmx24G -Xms24G -XX:+UseG1GC -jar your-application.jar
+# Calculate total target cores
+target_cores = overall_peak + headroom
 
+target_cores
 
--XX:+AlwaysPreTouch
+# Compute monthly peaks for each server
+monthly_peaks_df = df[[f'{month} Cores' for month in ['March Utilization', 'April Utilization', 'May Utilization', 'June Utilization', 'July Utilization', 'August Utilization']]]
 
-   private static final List<String> VALID_EXTENSIONS = Arrays.asList(
-            ".cs", ".vb", ".xml", ".config", ".csproj", ".vbproj", ".resx", ".xaml",
-            ".aspx", ".ascx", ".master", ".ashx", ".asmx", ".sln", ".settings",
-            ".json", ".sql", ".cshtml", ".vbhtml", ".razor");
+# Compute the median of peaks for each month
+median_peaks = monthly_peaks_df.median()
 
-    public static void main(String[] args) throws IOException {
-        Path startPath = Paths.get("/path/to/start/directory");
-        Files.walk(startPath)
-            .filter(Files::isRegularFile)
-            .filter(path -> VALID_EXTENSIONS.stream().anyMatch(ext -> path.toString().toLowerCase().endsWith(ext)))
-            .forEach(path -> {
-                try {
-                    processFile(path);
-                } catch (IOException e) {
-                    throw new UncheckedIOException(e);
-                }
-            });
-    }
+# Anomaly detection using Interquartile Range (IQR)
+Q1 = median_peaks.quantile(0.25)
+Q3 = median_peaks.quantile(0.75)
+IQR = Q3 - Q1
 
-import java.util.concurrent.atomic.AtomicInteger;
+# Define bounds for outliers
+lower_bound = Q1 - 1.5 * IQR
+upper_bound = Q3 + 1.5 * IQR
 
-public class ScanProgress {
-    private final int totalTasks;
-    private final AtomicInteger completedTasks = new AtomicInteger(0);
-    private final AtomicInteger errorTasks = new AtomicInteger(0);
-    private final AtomicInteger runningTasks = new AtomicInteger(0);
+# Filter out outliers
+adjusted_peaks = median_peaks[(median_peaks >= lower_bound) & (median_peaks <= upper_bound)]
 
-    public ScanProgress(int totalTasks) {
-        this.totalTasks = totalTasks;
-    }
+# Compute the adjusted peak and add 20% headroom
+adjusted_peak = adjusted_peaks.max()
+headroom = 0.20 * adjusted_peak
+target_cores_adjusted = adjusted_peak + headroom
 
-    public void taskStarted() {
-        runningTasks.incrementAndGet();
-    }
-
-    public void taskCompleted() {
-        completedTasks.incrementAndGet();
-        runningTasks.decrementAndGet();
-    }
-
-    public void taskError() {
-        errorTasks.incrementAndGet();
-        runningTasks.decrementAndGet();
-    }
-
-    public double getProgress() {
-        return (double) completedTasks.get() / totalTasks * 100;
-    }
-
-    public String getStatus() {
-        int yetToStart = totalTasks - completedTasks.get() - errorTasks.get() - runningTasks.get();
-        return "Total " + totalTasks + " Tasks, Completed ==> " + completedTasks.get() +
-               ", Running ==> " + runningTasks.get() + ", Error - " + errorTasks.get() +
-               ", Yet to Start ==> " + yetToStart;
-    }
-}
-
-
-@Override
-public CompletableFuture<Result> execute(UUID requestId, ScanRequest scanRequest, Result previousResult) {
-    try {
-        // Set status to STARTED
-        scanStatusService.updateScanStatus(requestId, "DOWNLOAD ARTIFACT STARTED", "DownloadArtifactsTask has started", scanRequest.getAitId(), scanRequest.getSpk());
-
-        List<TaskResult> artifacts = previousResult.getData();
-        List<CompletableFuture<TaskResult>> futures = new ArrayList<>();
-
-        for (TaskResult artifact : artifacts) {
-            progress.taskStarted(); // Call taskStarted here
-            futures.add(downloadService.downloadArtifact(artifact, scanRequest)
-                    .thenApply(result -> {
-                        // Notify the progress tracker when a task completes
-                        progress.taskCompleted();
-                        return result;
-                    })
-                    .exceptionally(ex -> {
-                        // Notify the progress tracker of an error
-                        progress.taskError();
-                        throw new RuntimeException("Failed to download artifact: " + artifact, ex);
-                    }));
-        }
-
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()]))
-                .exceptionally(ex -> {
-                    // Set status to ERROR
-                    scanStatusService.updateScanStatus(requestId, "ERROR", "Error in DownloadArtifactsTask: " + ex.getMessage(), null, scanRequest.getSpk());
-                    throw new RuntimeException("Failed DownloadArtifactsTask", ex);
-                });
-
-        List<TaskResult> downloadedFiles = futures.stream()
-                .map(CompletableFuture::join)
-                .collect(Collectors.toList());
-
-        // Set status to COMPLETED
-        scanStatusService.updateScanStatus(requestId, "COMPLETED", "DownloadArtifactsTask has completed", null, scanRequest.getSpk());
-
-        return CompletableFuture.completedFuture(new Result(scanRequest.getSpk(), "Completed DownloadArtifactsTask", downloadedFiles));
-
-    } catch (Exception e) {
-        // Set status to ERROR if anything goes wrong during setup
-        scanStatusService.updateScanStatus(requestId, "ERROR", "Error in DownloadArtifactsTask: " + e.getMessage(), null, scanRequest.getSpk());
-        throw new RuntimeException("Failed DownloadArtifactsTask", e);
-    }
-}
-
-
-@Component
-@Slf4j
-public class DownloadArtifactsTask implements JavaTask {
-
-    @Autowired
-    private DownloadService downloadService;
-
-    @Autowired
-    private ScanStatusService scanStatusService;
-
-    private Map<UUID, ScanProgress> progressMap = new ConcurrentHashMap<>();
-
-    @Override
-    public CompletableFuture<Result> execute(UUID requestId, ScanRequest scanRequest, Result previousResult) {
-        try {
-            // Create a ScanProgress object and store it in the map
-            List<TaskResult> artifacts = previousResult.getData();
-            ScanProgress progress = new ScanProgress(artifacts.size());
-            progressMap.put(requestId, progress);
-
-            // Set status to STARTED
-            scanStatusService.updateScanStatus(requestId, "DOWNLOAD ARTIFACT STARTED", "DownloadArtifactsTask has started", scanRequest.getAitId(), scanRequest.getSpk());
-
-            List<CompletableFuture<TaskResult>> futures = new ArrayList<>();
-
-            for (TaskResult artifact : artifacts) {
-                futures.add(downloadService.downloadArtifact(artifact, scanRequest)
-                        .thenApply(result -> {
-                            // Notify the progress tracker when a task completes
-                            progress.taskCompleted();
-                            return result;
-                        }));
-            }
-
-            CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()]))
-                    .exceptionally(ex -> {
-                        // Set status to ERROR
-                        scanStatusService.updateScanStatus(requestId, "ERROR", "Error in DownloadArtifactsTask: " + ex.getMessage(), null, scanRequest.getSpk());
-                        throw new RuntimeException("Failed DownloadArtifactsTask", ex);
-                    });
-
-            List<TaskResult> downloadedFiles = futures.stream()
-                    .map(CompletableFuture::join)
-                    .collect(Collectors.toList());
-
-            // Set status to COMPLETED
-            scanStatusService.updateScanStatus(requestId, "COMPLETED", "DownloadArtifactsTask has completed", null, scanRequest.getSpk());
-
-            return CompletableFuture.completedFuture(new Result(scanRequest.getSpk(), "Completed DownloadArtifactsTask", downloadedFiles))
-                    .thenApply(result -> {
-                        // Remove the progress tracker when all tasks are complete
-                        progressMap.remove(requestId);
-                        return result;
-                    });
-
-        } catch (Exception e) {
-            // Set status to ERROR if anything goes wrong during setup
-            scanStatusService.updateScanStatus(requestId, "ERROR", "Error in DownloadArtifactsTask: " + e.getMessage(), null, scanRequest.getSpk());
-            throw new RuntimeException("Failed DownloadArtifactsTask", e);
-        }
-    }
-
-    public ScanProgress getProgress(UUID requestId) {
-        return progressMap.get(requestId);
-    }
-}
-
-
-
-public interface YourEntityRepository extends JpaRepository<YourEntity, Long> {
-    List<YourEntity> findAllByOrderByCreatedDtDesc();
-}
-
-public static void addProjectsToMapping(String rootDirectory, Map<String, List<String>> projectMap) throws IOException {
-    Files.walk(Paths.get(rootDirectory))
-        .forEach(path -> {
-            if (path.toString().endsWith(".csproj") || path.toString().endsWith(".vbproj")) {
-                try {
-                    Files.walk(path.getParent())
-                        .filter(srcPath -> !Files.isDirectory(srcPath))  // Filter out directories
-                        .forEach(srcPath -> {
-                            List<String> value = Arrays.asList(path.toString(), path.getFileName().toString());
-                            projectMap.put(srcPath.toString(), value);
-                        });
-                } catch (IOException e) {
-                    throw new UncheckedIOException(e);
-                }
-            } else {
-                // Perform your alternative logic here for each path that is not .csproj or .vbproj
-                // You can access path.getParent() here
-            }
-        });
-}
-
-import javax.servlet.*;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-
-public class SimpleCORSFilter implements Filter {
-
-    @Override
-    public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) throws IOException, ServletException {
-        HttpServletResponse response = (HttpServletResponse) res;
-        response.setHeader("Access-Control-Allow-Origin", "*");
-        response.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE, PUT");
-        response.setHeader("Access-Control-Max-Age", "3600");
-        response.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept, X-Requested-With, remember-me, Your-Custom-Header");
-        chain.doFilter(req, res);
-    }
-
-    @Override
-    public void init(FilterConfig filterConfig) {}
-
-    @Override
-    public void destroy() {}
-
-}
-
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.core.Ordered;
-
-@Configuration
-public class AppConfig {
-
-    @Bean
-    public FilterRegistrationBean<SimpleCORSFilter> simpleCORSFilter() {
-        FilterRegistrationBean<SimpleCORSFilter> bean = new FilterRegistrationBean<>();
-
-        // Your CORS filter class here
-        bean.setFilter(new SimpleCORSFilter());
-
-        // Set the filter order to the highest precedence
-        bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
-
-        return bean;
-    }
-
-}
-
-keytool -genkeypair -alias selfsigned -keyalg RSA -keysize 2048 -storetype PKCS12 -keystore selfsigned.pfx -validity 3650
-
-server.port= 8443
-server.ssl.key-store= classpath:selfsigned.pfx
-server.ssl.key-store-password= YourPassword
-server.ssl.key-store-type= PKCS12
-server.ssl.enabled= true
-
-@Configuration
-@EnableRetry
-public class AppConfig {
-   // your beans and configuration here
-}
-
-
-@Service
-public class DownloadService {
-
-    @Retryable(
-      value = {ServiceException.class},
-      maxAttempts = 5,
-      backoff = @Backoff(delay = 5000))
-    public void downloadArtifact() {
-        // Your download logic here
-        // If ServiceException is thrown, Spring Retry will handle the retry operation
-    }
-
-    @Recover
-    public void recover(ServiceException e) {
-        // recovery logic here
-    }
-}
-
-import java.io.IOException;
-
-public class ProcessBuilderExample {
-
-    public static void main(String[] args) {
-        // Create a new ProcessBuilder
-        ProcessBuilder processBuilder = new ProcessBuilder();
-
-        // Get the environment of the process
-        // The environment is returned as a map which can be modified
-        // The changes to this map will be reflected in the environment of the process
-        // that is started by this ProcessBuilder
-        java.util.Map<String, String> environment = processBuilder.environment();
-
-        // Modify the PATH environment variable
-        String pathValue = environment.get("PATH");
-        String newPathValue = "/path/to/your/binaries:" + pathValue;
-        environment.put("PATH", newPathValue);
-
-        // Set the command you want to execute
-        // For example, a shell command
-        processBuilder.command("bash", "-c", "echo $PATH");
-
-        // Start the process
-        try {
-            Process process = processBuilder.start();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-}
-
-
-<dependency>
-    <groupId>org.springframework.retry</groupId>
-    <artifactId>spring-retry</artifactId>
-    <version>1.3.1</version>
-</dependency>
-
-<dependency>
-    <groupId>org.springframework</groupId>
-    <artifactId>spring-aspects</artifactId>
-    <version>5.3.10</version>
-</dependency>
-
-MATDB is a  Python library that facilitates smooth and efficient interaction with a variety of databases including, but not limited to, MySQL/MariaDB and SQL Server.
-What sets it apart from other database libraries like Encode’s Databases is its support for synchronous communication and its compatibility with enterprise-level databases like SQL Server.
-One of the standout features of MatDB is its pluggable design. This means that the library has a modular design, allowing developers to easily add support for additional databases such as Oracle, PostgreSQL, and more.
-
-"TurboMigrate: A High-Performance Data Migration Framework for Large-Scale Database Transfers"
-* Leveraging Pandas data streaming and a multi-threaded approach, this migration framework adeptly handles large-scale,
-one-time data migrations between MariaDB and SQL Server by processing data in manageable chunks, ensuring memory efficiency.
-
-* With robust error handling, transaction support, and parallel processing, the framework guarantees data integrity, accelerates migration speed,
-and provides customization options, making it an ideal solution for migrating extensive datasets with minimal resource consumption.
-The framework is pluggable by design with support for additional databases envisioned in future.
-
-
-Title: "Automated Software Modernization Readiness Assessment and Prioritization System"
-
-Abstract:
-
-An automated system and method for the evaluation and prioritization of software modernization projects through a scoring engine that calculates a modernization readiness score. The scoring engine analyzes software applications by considering a range of factors indicative of an application’s readiness for transition to modern or cloud-native architectures. Code scans are employed to identify Cloud Blockers based on the 12-factor app methodology and platform blockers such as unsupported or proprietary technologies. Additionally, the engine integrates data retrieved from Configuration Management Databases (CMDBs) and surveys to assess integration points and APIs, usage of outdated or proprietary technologies, statefulness, and scalability issues. The modernization readiness score, synthesized from these parameters, is combined with business criticality measures to classify and rank software modernization projects. The results are visualized in a quadrant graph, providing a comprehensive and strategic view of the readiness and business criticality of each application. This graph categorizes applications into four groups: low-hanging fruits, ideal candidates, deprioritized applications, and potential candidates, thereby facilitating informed decision-making for software modernization planning.
-
-import java.io.IOException;
-import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
-
-public class JarFileDeleter {
-
-    public static void main(String[] args) {
-        Path startPath = Paths.get("path_to_your_directory"); // replace with your directory
-        try {
-            Files.walkFileTree(startPath, new SimpleFileVisitor<>() {
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    if (file.toString().endsWith(".jar")) {
-                        Files.delete(file);
-                        System.out.println("Deleted file: " + file.toString());
-                    }
-                    return FileVisitResult.CONTINUE;
-                }
-
-                @Override
-                public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-                    System.err.printf("Unable to delete: %s: %s%n", file, exc);
-                    return FileVisitResult.CONTINUE;
-                }
-            });
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-}
-
-
-def get_language(build_tool):
-    # Define a dictionary to map build tools to their respective languages
-    build_tool_map = {
-        "maven": "Java",
-        "gradle": "Java",
-        "ant":"Java",
-        "npm": "JavaScript",
-        "yarn": "JavaScript",
-        "pip": "Python",
-        "setuptools": "Python",
-        "cargo": "Rust",
-        "stack": "Haskell",
-        "cabal": "Haskell",
-        "mix": "Elixir"
-    }
-
-    stripped_tool = re.sub(r'[-_]?v?\d+([._]\d+)*$', '', build_tool)
-
-    # Check direct match first
-    if stripped_tool.lower() in build_tool_map:
-        return build_tool_map[stripped_tool.lower()]
-
-    # Progressively strip prefixes until a match is found
-    parts = stripped_tool.split('-')
-    for i in range(len(parts)):
-        possible_tool = '-'.join(parts[i:])
-        if possible_tool.lower() in build_tool_map:
-            return build_tool_map[possible_tool.lower()]
-
-
-from fastapi import FastAPI
-from fastapi.openapi.models import OpenAPI
-from fastapi.openapi.utils import get_openapi
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from starlette.responses import HTMLResponse
-
-app = FastAPI()
-
-# Serve the static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-templates = Jinja2Templates(directory="static")
-
-
-@app.get("/docs", include_in_schema=False)
-async def custom_swagger_ui_html():
-    return templates.TemplateResponse("index.html", {"openapi_url": app.openapi_url})
-
-
-def custom_openapi():
-    if app.openapi_schema:
-        return app.openapi_schema
-    openapi_schema = get_openapi(
-        title="Sample FastAPI Project",
-        version="1.0.0",
-        description="This is a sample FastAPI project",
-        routes=app.routes,
-    )
-    app.openapi_schema = openapi_schema
-    return app.openapi_schema
-
-
-app.openapi = custom_openapi
-
-# Sample endpoints
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the sample FastAPI project!"}
-
-
-@app.get("/items/{item_id}")
-def read_item(item_id: int, query_param: str = None):
-    return {"item_id": item_id, "query_param": query_param}
-
-
-i [Colleague's Name],
-
-I wanted to take a moment to express my gratitude for your consistent support and assistance. Even though we're on different teams, you've always been my go-to person for [specific area]. Your readiness to help and share your knowledge has made a significant impact on my work.
-
-Thank you for being such a valuable colleague. I genuinely appreciate it.
-
-Warm regards,
-[Your Name]
+target_cores_adjusted
 
