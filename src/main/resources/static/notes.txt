@@ -60,3 +60,9 @@ target_cores_adjusted = adjusted_peak + headroom
 
 target_cores_adjusted
 
+Container escapes. A container escape is a vulnerability that allows an attacker to break out of a container and gain access to the host OS or other containers. Container escapes can be caused by misconfigurations, software bugs, or malicious code.
+Shared kernel vulnerabilities. If a vulnerability is found in the host OS kernel, it could potentially be exploited by any container running on that host.
+Privileged containers. Containers can be granted privileged access to the host OS and other containers. This can make them more attractive targets for attackers.
+Image vulnerabilities. Container images are often built from open source software packages. If a vulnerability is found in one of these packages, it could be present in all container images built from that package.
+
+
