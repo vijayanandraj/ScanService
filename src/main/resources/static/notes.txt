@@ -66,3 +66,32 @@ Privileged containers. Containers can be granted privileged access to the host O
 Image vulnerabilities. Container images are often built from open source software packages. If a vulnerability is found in one of these packages, it could be present in all container images built from that package.
 
 
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>com.oracle.database.jdbc</groupId>
+        <artifactId>ojdbc8</artifactId>
+        <version>19.8.0.0</version>
+    </dependency>
+</dependencies>
+
+
+
+spring.datasource.url=jdbc:oracle:thin:@<hostname>:<port>:<SID>
+spring.datasource.username=<username>
+spring.datasource.password=<password>
+spring.jpa.database-platform=org.hibernate.dialect.Oracle12cDialect
+
+
+@Bean
+public DataSource dataSource() {
+    return DataSourceBuilder.create()
+            .url("jdbc:oracle:thin:@<hostname>:<port>:<SID>")
+            .username("<username>")
+            .password("<password>")
+            .driverClassName("oracle.jdbc.OracleDriver")
+            .build();
+}
