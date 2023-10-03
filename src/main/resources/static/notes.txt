@@ -95,3 +95,9 @@ public DataSource dataSource() {
             .driverClassName("oracle.jdbc.OracleDriver")
             .build();
 }
+
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>9.2.1.jre11</version>
+        </dependency>
