@@ -1,3 +1,7 @@
+In an empty column (let's say column B for now), enter the following formula in the first row (assume B1)
+: =IF(ISNUMBER(MATCH(A1,data2!A:A,0)), "Match", "No Match")
+
+
 # Importing pandas and recalculating the target number of cores
 
 import pandas as pd
