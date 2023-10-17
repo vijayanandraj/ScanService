@@ -1,6 +1,12 @@
 In an empty column (let's say column B for now), enter the following formula in the first row (assume B1)
 : =IF(ISNUMBER(MATCH(A1,data2!A:A,0)), "Match", "No Match")
 
+Vijay, a software craftsman with two decades in the industry, seamlessly combines high-end architecture with hands-on coding passion.
+As a seasoned Solution/Application/Technical Architect, he specializes in modernizing applications, building scalable back-end systems, and prioritizing user experience.
+A polyglot programmer, he currently specializes in Java and Python, augmented by his adeptness in Cloud technologies and distributed computing.
+He's spent 12 years at the bank, taking on diverse roles such as Application, Technical, and Solution Architect across various lines of business.
+In his current role, he's the lead architect behind the Modernization Assessment Tool, guiding teams in transitioning from legacy systems to cloud-native architectures.
+
 
 # Importing pandas and recalculating the target number of cores
 
