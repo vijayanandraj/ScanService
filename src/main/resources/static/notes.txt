@@ -1,6 +1,8 @@
 In an empty column (let's say column B for now), enter the following formula in the first row (assume B1)
 : =IF(ISNUMBER(MATCH(A1,data2!A:A,0)), "Match", "No Match")
 
+StorageProvider storageProvider = SqlStorageProviderFactory.using(dataSource, null, StorageProviderUtils.DatabaseOptions.SKIP_CREATE);
+
 Vijay, a software craftsman with two decades in the industry, seamlessly combines high-end architecture with hands-on coding passion.
 As a seasoned Solution/Application/Technical Architect, he specializes in modernizing applications, building scalable back-end systems, and prioritizing user experience.
 A polyglot programmer, he currently specializes in Java and Python, augmented by his adeptness in Cloud technologies and distributed computing.
@@ -26,6 +28,8 @@ data = {
 #df = pd.read_excel("/path/to/your/excel/file.xlsx", sheet_name="Sheet1")
 
 df = pd.DataFrame(data)
+
+
 
 # Calculate monthly peak core utilization for each server
 for month in ['March Utilization', 'April Utilization', 'May Utilization', 'June Utilization', 'July Utilization', 'August Utilization']:
