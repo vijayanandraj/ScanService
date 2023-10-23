@@ -120,3 +120,62 @@ Minimizing application startup time is essential for effective containerization,
 
 
 In transitioning from a legacy setup to a containerized environment, a core challenge lies in managing application configurations, traditionally encapsulated within various config files. The modern container paradigm necessitates the externalization of these configurations as environment variables or via centralized services. This externalization is crucial for several reasons: it facilitates a clean separation between application code and configuration, promotes environment consistency across development, testing, and production stages, simplifies the scaling process of applications, and enhances security by segregating sensitive configuration details from the codebase. Moreover, it aligns with modern deployment methodologies and cloud-native principles, ensuring the system is easily configurable, manageable, and scalable in a dynamic containerized setup. Identifying a robust, scalable solution to migrate, manage, and secure these configurations in the new setup is the central issue demanding attention. The recipe provided will focus how to externalize the configuration files to environment variable with support for multiple environements(Dev/QA/Prod).  This recipe will also cover on how to migrate secrets (ex : DB passwords, API Token etc..) from configuration to Vault Services
+
+@Configuration
+public class AsyncConfig {
+
+    @Bean(name = "taskExecutor")
+    public Executor taskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(10); // Core pool size
+        executor.setMaxPoolSize(50);  // Max pool size
+        executor.setQueueCapacity(6000); // Queue capacity
+        executor.initialize();
+        return executor;
+    }
+}
+
+@Service
+public class EtlService {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    public void startEtlProcess() {
+        List<String> allAitIds = getAllAitIds(); // Assume this gets all unique AIT_IDs using native SQL
+
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        for (String aitId : allAitIds) {
+            CompletableFuture<Void> future = processAitId(aitId);
+            futures.add(future);
+        }
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+    }
+
+    @Async("taskExecutor")
+    public CompletableFuture<Void> processAitId(String aitId) {
+        // Fetch records for a specific AIT_ID
+        String fetchQuery = "SELECT * FROM source_table WHERE AIT_ID = ?";
+        List<Map<String, Object>> fetchedRecords = jdbcTemplate.queryForList(fetchQuery, new Object[]{aitId});
+
+        // Transformation logic
+        List<Map<String, Object>> transformedRecords = transform(fetchedRecords); // Implement your own transform method
+
+        // Batch insert into the target table
+        String insertQuery = "INSERT INTO target_table (column1, column2, ...) VALUES (?, ?, ...)";
+        List<Object[]> batchArgsList = new ArrayList<>();
+        for (Map<String, Object> record : transformedRecords) {
+            Object[] args = {record.get("column1"), record.get("column2"), /*...*/};
+            batchArgsList.add(args);
+        }
+
+        jdbcTemplate.batchUpdate(insertQuery, batchArgsList);
+        return CompletableFuture.completedFuture(null);
+    }
+
+    private List<Map<String, Object>> transform(List<Map<String, Object>> records) {
+        // Your transformation logic here
+        return records; // Return the transformed records
+    }
+}
