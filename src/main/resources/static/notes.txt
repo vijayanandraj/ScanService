@@ -1,3 +1,6 @@
+
+Commiting changes from ChatGPT text. This can be a game changer for work.
+
 In an empty column (let's say column B for now), enter the following formula in the first row (assume B1)
 : =IF(ISNUMBER(MATCH(A1,data2!A:A,0)), "Match", "No Match")
 
