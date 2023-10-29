@@ -1,8 +1,21 @@
 
 Commiting changes from ChatGPT text. This can be a game changer for work.
 
-In an empty column (let's say column B for now), enter the following formula in the first row (assume B1)
-: =IF(ISNUMBER(MATCH(A1,data2!A:A,0)), "Match", "No Match")
+import numpy as np
+
+# Generate some synthetic CPU utilization data as an example
+np.random.seed(42)
+data_points = np.random.randint(0, 100, 43200)
+
+# Sort the data
+sorted_data = np.sort(data_points)
+
+# Calculate the 95th percentile index
+index_95th = int((95 / 100) * len(sorted_data))
+
+# Get the 95th percentile value
+value_95th = sorted_data[index_95th]
+
 
 StorageProvider storageProvider = SqlStorageProviderFactory.using(dataSource, null, StorageProviderUtils.DatabaseOptions.SKIP_CREATE);
 
@@ -77,66 +90,6 @@ target_cores_adjusted = adjusted_peak + headroom
 
 target_cores_adjusted
 
-Container escapes. A container escape is a vulnerability that allows an attacker to break out of a container and gain access to the host OS or other containers. Container escapes can be caused by misconfigurations, software bugs, or malicious code.
-Shared kernel vulnerabilities. If a vulnerability is found in the host OS kernel, it could potentially be exploited by any container running on that host.
-Privileged containers. Containers can be granted privileged access to the host OS and other containers. This can make them more attractive targets for attackers.
-Image vulnerabilities. Container images are often built from open source software packages. If a vulnerability is found in one of these packages, it could be present in all container images built from that package.
-
-
-<dependencies>
-    <dependency>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-data-jpa</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>com.oracle.database.jdbc</groupId>
-        <artifactId>ojdbc8</artifactId>
-        <version>19.8.0.0</version>
-    </dependency>
-</dependencies>
-
-
-
-spring.datasource.url=jdbc:oracle:thin:@<hostname>:<port>:<SID>
-spring.datasource.username=<username>
-spring.datasource.password=<password>
-spring.jpa.database-platform=org.hibernate.dialect.Oracle12cDialect
-
-
-@Bean
-public DataSource dataSource() {
-    return DataSourceBuilder.create()
-            .url("jdbc:oracle:thin:@<hostname>:<port>:<SID>")
-            .username("<username>")
-            .password("<password>")
-            .driverClassName("oracle.jdbc.OracleDriver")
-            .build();
-}
-
-        <dependency>
-            <groupId>com.microsoft.sqlserver</groupId>
-            <artifactId>mssql-jdbc</artifactId>
-            <version>9.2.1.jre11</version>
-        </dependency>
-
-Minimizing application startup time is essential for effective containerization, especially in cloud-native environments. Key factors affecting startup time include monolithic architecture, costly initialization operations, local cache loading, and external system dependencies. Remediation strategies include transitioning to a microservices architecture for parallelized startup, employing lazy loading and asynchronous initialization to defer or parallelize costly operations, utilizing external cache backing services to offload cache initialization, and implementing health checks and timeouts for external systems. Additionally, modularizing the codebase, optimizing configuration management, and ensuring adequate hardware resources can further reduce startup time. Keeping libraries updated, reducing excessive logging, running database migrations outside the startup process, profiling the boot sequence, and disabling unnecessary auto-configuration are also vital steps towards optimizing startup time, making applications more suited for rapid scaling and failover in containerized deployments.
-
-
-In transitioning from a legacy setup to a containerized environment, a core challenge lies in managing application configurations, traditionally encapsulated within various config files. The modern container paradigm necessitates the externalization of these configurations as environment variables or via centralized services. This externalization is crucial for several reasons: it facilitates a clean separation between application code and configuration, promotes environment consistency across development, testing, and production stages, simplifies the scaling process of applications, and enhances security by segregating sensitive configuration details from the codebase. Moreover, it aligns with modern deployment methodologies and cloud-native principles, ensuring the system is easily configurable, manageable, and scalable in a dynamic containerized setup. Identifying a robust, scalable solution to migrate, manage, and secure these configurations in the new setup is the central issue demanding attention. The recipe provided will focus how to externalize the configuration files to environment variable with support for multiple environements(Dev/QA/Prod).  This recipe will also cover on how to migrate secrets (ex : DB passwords, API Token etc..) from configuration to Vault Services
-
-@Configuration
-public class AsyncConfig {
-
-    @Bean(name = "taskExecutor")
-    public Executor taskExecutor() {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(10); // Core pool size
-        executor.setMaxPoolSize(50);  // Max pool size
-        executor.setQueueCapacity(6000); // Queue capacity
-        executor.initialize();
-        return executor;
-    }
-}
 
 @Service
 public class EtlService {
