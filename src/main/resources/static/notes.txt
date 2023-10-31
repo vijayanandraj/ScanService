@@ -1,6 +1,15 @@
 
 Commiting changes from ChatGPT text. This can be a game changer for work.
 
+    Row row = rowIterator.next();
+    Cell firstCell = row.getCell(0);
+    Cell secondCell = row.getCell(1);
+
+    if ((firstCell == null || firstCell.toString().trim().isEmpty()) &&
+        (secondCell == null || secondCell.toString().trim().isEmpty())) {
+        continue;  // Skip this row
+    }
+
 // Insert data in batches
 List<String> batchSql = new ArrayList<>();
 int batchCount = 0;
