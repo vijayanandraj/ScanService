@@ -1,6 +1,37 @@
 
 Commiting changes from ChatGPT text. This can be a game changer for work.
 
+// Insert data in batches
+List<String> batchSql = new ArrayList<>();
+int batchCount = 0;
+
+while (rowIterator.hasNext()) {
+    Row row = rowIterator.next();
+    StringJoiner columnValues = new StringJoiner(", ");
+    Iterator<Cell> cellIterator = row.cellIterator();
+
+    while (cellIterator.hasNext()) {
+        Cell cell = cellIterator.next();
+        // Add your logic here to differentiate between integer and decimal, etc.
+        columnValues.add("'" + cell.toString() + "'");
+    }
+
+    String insertSQL = "INSERT INTO " + tableName + " VALUES (" + columnValues.toString() + ")";
+    batchSql.add(insertSQL);
+
+    if (++batchCount % BATCH_SIZE == 0) {
+        jdbcTemplate.batchUpdate(batchSql.toArray(new String[0]));
+        batchSql.clear();
+    }
+}
+
+// Execute the remaining batch if it's not empty
+if (!batchSql.isEmpty()) {
+    jdbcTemplate.batchUpdate(batchSql.toArray(new String[0]));
+    batchSql.clear();
+}
+
+
 private boolean doesTableExist(String tableName) {
     String sql = "SHOW TABLES LIKE ?";
     List<String> result = jdbcTemplate.queryForList(sql, new Object[]{tableName}, String.class);
