@@ -1,6 +1,43 @@
 
 Commiting changes from ChatGPT text. This can be a game changer for work.
 
+private boolean doesTableExist(String tableName) {
+    String sql = "SHOW TABLES LIKE ?";
+    List<String> result = jdbcTemplate.queryForList(sql, new Object[]{tableName}, String.class);
+    return !result.isEmpty();
+}
+
+private boolean doesTableExist(String tableName) {
+    String sql = "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ?";
+    List<Map<String, Object>> result = jdbcTemplate.queryForList(sql, new Object[]{tableName});
+    return !result.isEmpty();
+}
+
+
+if (doesTableExist(tableName)) {
+    String truncateTableSQL = "TRUNCATE TABLE " + tableName;
+    jdbcTemplate.execute(truncateTableSQL);
+} else {
+    String createTableSQL = "CREATE TABLE " + tableName + " (" + sqlColumns.toString() + ")";
+    jdbcTemplate.execute(createTableSQL);
+}
+
+
+Object value;
+if (cell.getCellType() == CellType.NUMERIC) {
+    double numericValue = cell.getNumericCellValue();
+    if (numericValue == Math.floor(numericValue)) {
+        value = (int) numericValue;
+    } else {
+        value = numericValue;
+    }
+} else {
+    value = cell.toString();
+}
+
+columnValues.add("'" + value + "'");
+
+
 import numpy as np
 
 # Generate some synthetic CPU utilization data as an example
