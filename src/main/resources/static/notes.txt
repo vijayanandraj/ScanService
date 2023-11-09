@@ -1,6 +1,25 @@
 
 Commiting changes from ChatGPT text. This can be a game changer for work.
 
+import csv
+
+# Function to add double quotes to each item in a row
+def add_quotes(row):
+    return ['"' + str(item) + '"' for item in row]
+
+def process_csv(input_file_path, output_file_path):
+    with open(input_file_path, 'r', newline='') as csvfile_in:
+        reader = csv.reader(csvfile_in)
+
+        with open(output_file_path, 'w', newline='') as csvfile_out:
+            writer = csv.writer(csvfile_out, quoting=csv.QUOTE_NONE, escapechar='\\')
+
+            for row in reader:
+                writer.writerow(add_quotes(row))
+
+# Replace 'input.csv' and 'output.csv' with your file paths
+process_csv('input.csv', 'output.csv')
+
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
