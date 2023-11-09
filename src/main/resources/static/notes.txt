@@ -1,6 +1,49 @@
 
 Commiting changes from ChatGPT text. This can be a game changer for work.
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Service
+public class EtlService {
+
+    @Autowired
+    private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+
+    // This set should be populated with the ait_numbers to exclude.
+    private Set<Double> exclusionSet = new HashSet<>();
+
+    public void loadExclusionSet(List<Double> aitNumbersToExclude) {
+        exclusionSet.addAll(aitNumbersToExclude);
+    }
+
+    public void performEtl() {
+        int offset = 0;
+        List<Map<String, Object>> batch;
+
+        do {
+            batch = extractBatch(offset, BATCH_SIZE);
+
+            List<Map<String, Object>> filteredBatch = batch.stream()
+                    .filter(row -> !exclusionSet.contains(((Number) row.get("ait_number")).doubleValue()))
+                    .collect(Collectors.toList());
+
+            // Continue with transform and load operations
+            List<Map<String, Object>> transformedBatch = transformBatch(filteredBatch);
+            loadBatch(transformedBatch);
+
+            offset += BATCH_SIZE;
+        } while (!batch.isEmpty());
+    }
+
+    // Extract, transform, and load methods would be defined here as before
+}
+
+
     private Integer convertToBit(Object value) {
         if ("yes".equalsIgnoreCase((String) value)) {
             return 1;
