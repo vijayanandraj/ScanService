@@ -1,6 +1,83 @@
 
 Commiting changes from ChatGPT text. This can be a game changer for work.
 
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
+import org.springframework.jdbc.core.namedparam.SqlParameterSourceUtils;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@Service
+public class EtlService {
+
+    private static final int BATCH_SIZE = 1000; // Example batch size
+    private static final Map<String, String> columnMapping = getColumnMapping(); // Mock column mapping
+
+    @Autowired
+    private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+
+    public void performEtl() {
+        int offset = 0;
+        List<Map<String, Object>> batch;
+
+        do {
+            batch = extractBatch(offset, BATCH_SIZE);
+
+            List<Map<String, Object>> transformedBatch = transformBatch(batch);
+
+            loadBatch(transformedBatch);
+
+            offset += batch.size();
+        } while (batch.size() == BATCH_SIZE);
+    }
+
+    private List<Map<String, Object>> extractBatch(int offset, int batchSize) {
+        String sql = "SELECT * FROM source_table LIMIT :limit OFFSET :offset";
+        return namedParameterJdbcTemplate.queryForList(sql, Map.of("limit", batchSize, "offset", offset));
+    }
+
+    private List<Map<String, Object>> transformBatch(List<Map<String, Object>> batch) {
+        List<Map<String, Object>> transformedBatch = new ArrayList<>();
+        for (Map<String, Object> row : batch) {
+            Map<String, Object> transformedRow = renameKeys(row, columnMapping);
+            transformedBatch.add(transformedRow);
+        }
+        return transformedBatch;
+    }
+
+    private void loadBatch(List<Map<String, Object>> batch) {
+        String sql = "INSERT INTO target_table (col1, col2, col3, ...) VALUES (:col1, :col2, :col3, ...)";
+        SqlParameterSource[] batchParams = SqlParameterSourceUtils.createBatch(batch.toArray());
+        namedParameterJdbcTemplate.batchUpdate(sql, batchParams);
+    }
+
+    private static Map<String, String> getColumnMapping() {
+        Map<String, String> columnMapping = new HashMap<>();
+        columnMapping.put("srcName1", "tgtName1");
+        columnMapping.put("srcName2", "tgtName2");
+        // ... add all mappings here
+        return columnMapping;
+    }
+
+    private Map<String, Object> renameKeys(Map<String, Object> row, Map<String, String> columnMapping) {
+        Map<String, Object> transformedRow = new HashMap<>();
+        for (Map.Entry<String, Object> entry : row.entrySet()) {
+            String sourceColumnName = entry.getKey();
+            Object value = entry.getValue();
+            String targetColumnName = columnMapping.getOrDefault(sourceColumnName, sourceColumnName);
+            transformedRow.put(targetColumnName, value);
+        }
+        return transformedRow;
+    }
+}
+
+
 @Service
 public class AitService {
 
@@ -25,7 +102,6 @@ public class AitService {
 }
 
 
-
 import numpy as np
 
 # Generate some synthetic CPU utilization data as an example
@@ -42,13 +118,6 @@ index_95th = int((95 / 100) * len(sorted_data))
 value_95th = sorted_data[index_95th]
 
 
-StorageProvider storageProvider = SqlStorageProviderFactory.using(dataSource, null, StorageProviderUtils.DatabaseOptions.SKIP_CREATE);
-
-Vijay, a software craftsman with two decades in the industry, seamlessly combines high-end architecture with hands-on coding passion.
-As a seasoned Solution/Application/Technical Architect, he specializes in modernizing applications, building scalable back-end systems, and prioritizing user experience.
-A polyglot programmer, he currently specializes in Java and Python, augmented by his adeptness in Cloud technologies and distributed computing.
-He's spent 12 years at the bank, taking on diverse roles such as Application, Technical, and Solution Architect across various lines of business.
-In his current role, he's the lead architect behind the Modernization Assessment Tool, guiding teams in transitioning from legacy systems to cloud-native architectures.
 
 
 # Importing pandas and recalculating the target number of cores
