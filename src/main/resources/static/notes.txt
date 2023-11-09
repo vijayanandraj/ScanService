@@ -1,6 +1,16 @@
 
 Commiting changes from ChatGPT text. This can be a game changer for work.
 
+    private Integer convertToBit(Object value) {
+        if ("yes".equalsIgnoreCase((String) value)) {
+            return 1;
+        } else if ("no".equalsIgnoreCase((String) value)) {
+            return 0;
+        }
+        // Add additional checks and conversions as necessary
+        return null; // or a default value
+    }
+
   private static class LowerCaseMap<V> extends HashMap<String, V> {
     @Override
     public V put(String key, V value) {
