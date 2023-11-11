@@ -1,201 +1,113 @@
 
 Commiting changes from ChatGPT text. This can be a game changer for work.
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-@Service
-public class EtlService {
-
-    @Autowired
-    private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
-
-    // This set should be populated with the ait_numbers to exclude.
-    private Set<Double> exclusionSet = new HashSet<>();
-
-    public void loadExclusionSet(List<Double> aitNumbersToExclude) {
-        exclusionSet.addAll(aitNumbersToExclude);
-    }
-
-    public void performEtl() {
-        int offset = 0;
-        List<Map<String, Object>> batch;
-
-        do {
-            batch = extractBatch(offset, BATCH_SIZE);
-
-            List<Map<String, Object>> filteredBatch = batch.stream()
-                    .filter(row -> !exclusionSet.contains(((Number) row.get("ait_number")).doubleValue()))
-                    .collect(Collectors.toList());
-
-            // Continue with transform and load operations
-            List<Map<String, Object>> transformedBatch = transformBatch(filteredBatch);
-            loadBatch(transformedBatch);
-
-            offset += BATCH_SIZE;
-        } while (!batch.isEmpty());
-    }
-
-    // Extract, transform, and load methods would be defined here as before
-}
+<dependency>
+    <groupId>com.github.javafaker</groupId>
+    <artifactId>javafaker</artifactId>
+    <version>1.0.2</version>
+    <scope>test</scope>
+</dependency>
 
 
-    private Integer convertToBit(Object value) {
-        if ("yes".equalsIgnoreCase((String) value)) {
-            return 1;
-        } else if ("no".equalsIgnoreCase((String) value)) {
-            return 0;
-        }
-        // Add additional checks and conversions as necessary
-        return null; // or a default value
-    }
-
-  private static class LowerCaseMap<V> extends HashMap<String, V> {
-    @Override
-    public V put(String key, V value) {
-      return super.put(key.toLowerCase(), value);
-    }
-
-    @Override
-    public V get(Object key) {
-      if (key instanceof String) {
-        return super.get(((String) key).toLowerCase());
-      }
-      return super.get(key);
-    }
-
-    @Override
-    public boolean containsKey(Object key) {
-      if (key instanceof String) {
-        return super.containsKey(((String) key).toLowerCase());
-      }
-      return super.containsKey(key);
-    }
-    // ... other overrides as necessary
-  }
-
-import csv
-
-# Function to add double quotes to each item in a row
-def add_quotes(row):
-    return ['"' + str(item) + '"' for item in row]
-
-def process_csv(input_file_path, output_file_path):
-    with open(input_file_path, 'r', newline='') as csvfile_in:
-        reader = csv.reader(csvfile_in)
-
-        with open(output_file_path, 'w', newline='') as csvfile_out:
-            writer = csv.writer(csvfile_out, quoting=csv.QUOTE_NONE, escapechar='\\')
-
-            for row in reader:
-                writer.writerow(add_quotes(row))
-
-# Replace 'input.csv' and 'output.csv' with your file paths
-process_csv('input.csv', 'output.csv')
-
-
-import org.springframework.beans.factory.annotation.Autowired;
+import com.github.javafaker.Faker;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.core.namedparam.SqlParameterSource;
-import org.springframework.jdbc.core.namedparam.SqlParameterSourceUtils;
-import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Service
-public class EtlService {
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
-    private static final int BATCH_SIZE = 1000; // Example batch size
-    private static final Map<String, String> columnMapping = getColumnMapping(); // Mock column mapping
+class EtlServiceTest {
 
-    @Autowired
-    private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+    @Mock
+    private NamedParameterJdbcTemplate sourceJdbcTemplate; // Mock for source DB
 
-    public void performEtl() {
-        int offset = 0;
-        List<Map<String, Object>> batch;
+    @Mock
+    private NamedParameterJdbcTemplate targetJdbcTemplate; // Mock for target DB
 
-        do {
-            batch = extractBatch(offset, BATCH_SIZE);
+	private EtlService etlService;
 
-            List<Map<String, Object>> transformedBatch = transformBatch(batch);
 
-            loadBatch(transformedBatch);
+	    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+        etlService = new EtlService();
 
-            offset += batch.size();
-        } while (batch.size() == BATCH_SIZE);
+        // Inject the mocks into the private fields of the EtlService instance
+        ReflectionTestUtils.setField(etlService, "sourceJdbcTemplate", sourceJdbcTemplate);
+        ReflectionTestUtils.setField(etlService, "targetJdbcTemplate", targetJdbcTemplate);
     }
 
-    private List<Map<String, Object>> extractBatch(int offset, int batchSize) {
-        String sql = "SELECT * FROM source_table LIMIT :limit OFFSET :offset";
-        return namedParameterJdbcTemplate.queryForList(sql, Map.of("limit", batchSize, "offset", offset));
+    // Method to generate mock source data
+    private List<Map<String, Object>> createMockSourceData() {
+		Faker faker = new Faker();
+		List<Map<String, Object>> mockData = new ArrayList<>();
+
+		for (int i = 0; i < 10; i++) { // Generate 10 rows of data
+			Map<String, Object> row = new HashMap<>();
+			// Using the source column names as per your mappings
+			row.put("ADDRESS", faker.address().streetAddress()); // Source for target column "ADDRESS2"
+			row.put("CITY", faker.address().city());             // Source for "ADDRESS3"
+			row.put("STATE", faker.address().state());           // Source for "ADDRESS4"
+			row.put("ZIP_CODE", faker.address().zipCode());      // Source for "ADDRESS5"
+			row.put("CPUTYPE", faker.app().name());              // Source for "CPU_MODEL"
+			row.put("CPUSPEED", faker.number().randomDigitNotZero() + " GHz"); // Source for "CPUSPEED"
+			row.put("DATACENTER", "DataCenter" + faker.number().digit()); // Source for "DC_NAME"
+			row.put("REGIONCODE", faker.country().countryCode2()); // Source for "DC_REGION"
+			row.put("ENVIRONMENT", faker.options().option("Production", "Development", "Testing")); // Source for "ENVIRONMENT"
+			row.put("FQDN", faker.internet().domainName());      // Source for "FQDN"
+			row.put("HOSTNAME", faker.internet().domainWord());  // Source for "HOST_NAME"
+			row.put("IS_DMZ", faker.options().option("yes", "no")); // Source for "IS_DMZ"
+			row.put("IS_VIRTUAL", faker.bool().bool() ? "yes" : "no"); // Source for "IS_VIRTUAL"
+			row.put("SITE_NAME", faker.company().industry());    // Source for "LOCATION DESCRIPTION"
+			row.put("MEMORY", faker.number().numberBetween(4, 64) + " GB"); // Source for "MEMORY"
+			row.put("MODEL", faker.commerce().productName());    // Source for "MODEL"
+			row.put("AIT_ALIGNING_CIO_ORG", faker.company().name()); // Source for "ORG"
+			row.put("OS_NAME", faker.operatingSystem().name());  // Source for "OS_NAME"
+			row.put("OS_TYPE", faker.programmingLanguage().name()); // Source for "OS_TYPE"
+			row.put("OS_VERSION", faker.app().version());        // Source for "OS_VERSION"
+			row.put("SERVER_FUNCTION", faker.company().profession()); // Source for "SERVER_FUNCTION"
+			row.put("THREE_DOT_HIRERACHY", faker.company().bs()); // Source for "THREEDOT_HIRERACHY"
+			row.put("CORECOUNT", faker.number().numberBetween(1, 16)); // Source for "TOTAL_CORES"
+			row.put("AIT_NUMBER", faker.number().randomDouble(2, 1, 1000));  // Source for "ait_id"
+
+			mockData.add(row);
+		}
+
+		return mockData;
+
     }
 
-    private List<Map<String, Object>> transformBatch(List<Map<String, Object>> batch) {
-        List<Map<String, Object>> transformedBatch = new ArrayList<>();
-        for (Map<String, Object> row : batch) {
-            Map<String, Object> transformedRow = renameKeys(row, columnMapping);
-            transformedBatch.add(transformedRow);
-        }
-        return transformedBatch;
-    }
+    // Test the ETL process
+    @Test
+    void performEtlTest() {
+        // Arrange: Create mock source data
+        List<Map<String, Object>> mockSourceData = createMockSourceData();
 
-    private void loadBatch(List<Map<String, Object>> batch) {
-        String sql = "INSERT INTO target_table (col1, col2, col3, ...) VALUES (:col1, :col2, :col3, ...)";
-        SqlParameterSource[] batchParams = SqlParameterSourceUtils.createBatch(batch.toArray());
-        namedParameterJdbcTemplate.batchUpdate(sql, batchParams);
-    }
+        // Set up the mock behavior for the extractBatch method
+        when(namedParameterJdbcTemplate.queryForList(any(String.class), any(Map.class)))
+            .thenReturn(mockSourceData)
+            .thenReturn(List.of()); // To simulate the end of data stream
 
-    private static Map<String, String> getColumnMapping() {
-        Map<String, String> columnMapping = new HashMap<>();
-        columnMapping.put("srcName1", "tgtName1");
-        columnMapping.put("srcName2", "tgtName2");
-        // ... add all mappings here
-        return columnMapping;
-    }
+        // Act: Perform the ETL process
+        etlService.performEtl();
 
-    private Map<String, Object> renameKeys(Map<String, Object> row, Map<String, String> columnMapping) {
-        Map<String, Object> transformedRow = new HashMap<>();
-        for (Map.Entry<String, Object> entry : row.entrySet()) {
-            String sourceColumnName = entry.getKey();
-            Object value = entry.getValue();
-            String targetColumnName = columnMapping.getOrDefault(sourceColumnName, sourceColumnName);
-            transformedRow.put(targetColumnName, value);
-        }
-        return transformedRow;
+        // Assert: Verify the interactions with the mock
+        // Verify extractBatch was called at least once
+        verify(namedParameterJdbcTemplate, atLeastOnce()).queryForList(any(String.class), any(Map.class));
+
+        // Verify loadBatch was called with the correct transformed data
+        // You might need to customize this part based on how you implement the loadBatch method
+        verify(namedParameterJdbcTemplate, times(1))
+            .batchUpdate(any(String.class), any(Map[].class));
     }
 }
 
-
-@Service
-public class AitService {
-
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
-
-    public void insertSoftwareDetails(int ait_id) {
-        String selectQuery = "select distinct(osname), osversion from ait_infra where ait_id = ?";
-
-        List<String> osDetails = jdbcTemplate.query(selectQuery, new Object[]{ait_id}, new RowMapper<String>() {
-            @Override
-            public String mapRow(ResultSet rs, int rowNum) throws SQLException {
-                return rs.getString("osname") + "_" + rs.getString("osversion");
-            }
-        });
-
-        for (String osDetail : osDetails) {
-            String insertStatement = "insert into ait_sw_details(ait_id, sw_type, sw_name) values (?, 'OS', ?)";
-            jdbcTemplate.update(insertStatement, ait_id, osDetail);
-        }
-    }
-}
 
 
 import numpy as np
