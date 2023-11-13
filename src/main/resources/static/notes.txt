@@ -6,22 +6,22 @@ columnMapping.put("CITY", "ADDRESS3");
 columnMapping.put("STATE", "ADDRESS4");
 columnMapping.put("ZIP_CODE", "ADDRESS5");
 columnMapping.put("CPUTYPE", "CPU_MODEL");
-columnMapping.put("CPUSPEED", "CPUSPEED"); // unchanged
+columnMapping.put("CPUSPEED", "CPUSPEED"); 
 columnMapping.put("DATACENTER", "DC_NAME");
 columnMapping.put("REGIONCODE", "DC_REGION");
-columnMapping.put("ENVIRONMENT", "ENVIRONMENT"); // unchanged
-columnMapping.put("FQDN", "FQDN"); // unchanged
+columnMapping.put("ENVIRONMENT", "ENVIRONMENT"); 
+columnMapping.put("FQDN", "FQDN"); 
 columnMapping.put("HOSTNAME", "HOST_NAME");
-columnMapping.put("IS_DMZ", "IS_DMZ"); // unchanged
-columnMapping.put("IS_VIRTUAL", "IS_VIRTUAL"); // unchanged
+columnMapping.put("IS_DMZ", "IS_DMZ"); 
+columnMapping.put("IS_VIRTUAL", "IS_VIRTUAL"); 
 columnMapping.put("SITE_NAME", "LOCATION DESCRIPTION");
-columnMapping.put("MEMORY", "MEMORY"); // unchanged
-columnMapping.put("MODEL", "MODEL"); // unchanged
+columnMapping.put("MEMORY", "MEMORY"); 
+columnMapping.put("MODEL", "MODEL"); 
 columnMapping.put("AIT_ALIGNING_CIO_ORG", "ORG");
-columnMapping.put("OS_NAME", "OS_NAME"); // unchanged
-columnMapping.put("OS_TYPE", "OS_TYPE"); // unchanged
-columnMapping.put("OS_VERSION", "OS_VERSION"); // unchanged
-columnMapping.put("SERVER_FUNCTION", "SERVER_FUNCTION"); // unchanged
+columnMapping.put("OS_NAME", "OS_NAME"); 
+columnMapping.put("OS_TYPE", "OS_TYPE"); 
+columnMapping.put("OS_VERSION", "OS_VERSION"); 
+columnMapping.put("SERVER_FUNCTION", "SERVER_FUNCTION"); 
 columnMapping.put("THREE_DOT_HIRERACHY", "THREEDOT_HIRERACHY");
 columnMapping.put("CORECOUNT", "TOTAL_CORES");
 columnMapping.put("AITNUMBER", "ait_id");
