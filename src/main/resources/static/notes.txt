@@ -1,6 +1,32 @@
 
 Commiting changes from ChatGPT text. This can be a game changer for work.
 
+columnMapping.put("ADDRESS", "ADDRESS2");
+columnMapping.put("CITY", "ADDRESS3");
+columnMapping.put("STATE", "ADDRESS4");
+columnMapping.put("ZIP_CODE", "ADDRESS5");
+columnMapping.put("CPUTYPE", "CPU_MODEL");
+columnMapping.put("CPUSPEED", "CPUSPEED"); // unchanged
+columnMapping.put("DATACENTER", "DC_NAME");
+columnMapping.put("REGIONCODE", "DC_REGION");
+columnMapping.put("ENVIRONMENT", "ENVIRONMENT"); // unchanged
+columnMapping.put("FQDN", "FQDN"); // unchanged
+columnMapping.put("HOSTNAME", "HOST_NAME");
+columnMapping.put("IS_DMZ", "IS_DMZ"); // unchanged
+columnMapping.put("IS_VIRTUAL", "IS_VIRTUAL"); // unchanged
+columnMapping.put("SITE_NAME", "LOCATION DESCRIPTION");
+columnMapping.put("MEMORY", "MEMORY"); // unchanged
+columnMapping.put("MODEL", "MODEL"); // unchanged
+columnMapping.put("AIT_ALIGNING_CIO_ORG", "ORG");
+columnMapping.put("OS_NAME", "OS_NAME"); // unchanged
+columnMapping.put("OS_TYPE", "OS_TYPE"); // unchanged
+columnMapping.put("OS_VERSION", "OS_VERSION"); // unchanged
+columnMapping.put("SERVER_FUNCTION", "SERVER_FUNCTION"); // unchanged
+columnMapping.put("THREE_DOT_HIRERACHY", "THREEDOT_HIRERACHY");
+columnMapping.put("CORECOUNT", "TOTAL_CORES");
+columnMapping.put("AITNUMBER", "ait_id");
+
+
 <dependency>
     <groupId>com.github.javafaker</groupId>
     <artifactId>javafaker</artifactId>
