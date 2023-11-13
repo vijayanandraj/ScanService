@@ -1,6 +1,64 @@
 
 Commiting changes from ChatGPT text. This can be a game changer for work.
 
+
+@Override
+@Job(name = "MDH_AIT_Infra_Job", retries = 0)
+public void runETLTaskInBatch() {
+    int offset = 0;
+    Set<Integer> exclusionSet = getExcludedAitIds();
+
+    List<Map<String, Object>> batch;
+    do {
+        batch = extractBatch(offset, BATCH_SIZE);
+
+        // Collect unique AIT numbers for deletion
+        Set<Integer> uniqueAitNumbers = new HashSet<>();
+        List<Map<String, Object>> filteredBatch = new ArrayList<>();
+
+        for (Map<String, Object> row : batch) {
+            int aitNumber = ((Number) row.get("aitnumber")).intValue();
+            uniqueAitNumbers.add(aitNumber);
+
+            // Apply exclusion logic
+            if (!exclusionSet.contains(aitNumber)) {
+                filteredBatch.add(row);
+            }
+        }
+
+        // Perform deletion for AIT numbers not previously deleted
+        performDeletion(uniqueAitNumbers);
+
+        // Transform and load filtered batch
+        List<Map<String, Object>> transformedBatch = transformBatch(filteredBatch);
+        loadBatch(transformedBatch);
+
+        offset += batch.size();
+    } while (batch.size() == BATCH_SIZE);
+}
+
+private void performDeletion(Set<Integer> uniqueAitNumbers) {
+    // Filter unique AIT numbers to find which ones haven't been deleted yet
+    Set<Integer> newAitNumbersForDeletion = uniqueAitNumbers.stream()
+        .filter(aitNumber -> !deletedAitNumbers.contains(aitNumber))
+        .collect(Collectors.toSet());
+
+    // Perform deletion for new AIT numbers
+    if (!newAitNumbersForDeletion.isEmpty()) {
+        deleteAitNumbers(newAitNumbersForDeletion);
+        deletedAitNumbers.addAll(newAitNumbersForDeletion);
+    }
+}
+
+private void deleteAitNumbers(Set<Integer> aitNumbers) {
+    // Build the SQL query with IN clause
+    String sql = "DELETE FROM ait_infra WHERE ait_id IN (:aitNumbers)";
+    Map<String, Object> params = Map.of("aitNumbers", aitNumbers);
+    sqlServerJdbcTemplate.update(sql, params);
+}
+
+
+
 columnMapping.put("address", "address2");
 columnMapping.put("city", "address3");
 columnMapping.put("state", "address4");
