@@ -1,30 +1,31 @@
 
 Commiting changes from ChatGPT text. This can be a game changer for work.
 
-columnMapping.put("ADDRESS", "ADDRESS2");
-columnMapping.put("CITY", "ADDRESS3");
-columnMapping.put("STATE", "ADDRESS4");
-columnMapping.put("ZIP_CODE", "ADDRESS5");
-columnMapping.put("CPUTYPE", "CPU_MODEL");
-columnMapping.put("CPUSPEED", "CPUSPEED"); 
-columnMapping.put("DATACENTER", "DC_NAME");
-columnMapping.put("REGIONCODE", "DC_REGION");
-columnMapping.put("ENVIRONMENT", "ENVIRONMENT"); 
-columnMapping.put("FQDN", "FQDN"); 
-columnMapping.put("HOSTNAME", "HOST_NAME");
-columnMapping.put("IS_DMZ", "IS_DMZ"); 
-columnMapping.put("IS_VIRTUAL", "IS_VIRTUAL"); 
-columnMapping.put("SITE_NAME", "LOCATION DESCRIPTION");
-columnMapping.put("MEMORY", "MEMORY"); 
-columnMapping.put("MODEL", "MODEL"); 
-columnMapping.put("AIT_ALIGNING_CIO_ORG", "ORG");
-columnMapping.put("OS_NAME", "OS_NAME"); 
-columnMapping.put("OS_TYPE", "OS_TYPE"); 
-columnMapping.put("OS_VERSION", "OS_VERSION"); 
-columnMapping.put("SERVER_FUNCTION", "SERVER_FUNCTION"); 
-columnMapping.put("THREE_DOT_HIRERACHY", "THREEDOT_HIRERACHY");
-columnMapping.put("CORECOUNT", "TOTAL_CORES");
-columnMapping.put("AITNUMBER", "ait_id");
+columnMapping.put("address", "address2");
+columnMapping.put("city", "address3");
+columnMapping.put("state", "address4");
+columnMapping.put("zip_code", "address5");
+columnMapping.put("cputype", "cpu_model");
+columnMapping.put("cpuspeed", "cpuspeed");
+columnMapping.put("datacenter", "dc_name");
+columnMapping.put("regioncode", "dc_region");
+columnMapping.put("environment", "environment");
+columnMapping.put("fqdn", "fqdn");
+columnMapping.put("hostname", "host_name");
+columnMapping.put("is_dmz", "is_dmz");
+columnMapping.put("is_virtual", "is_virtual");
+columnMapping.put("site_name", "location description");
+columnMapping.put("memory", "memory");
+columnMapping.put("model", "model");
+columnMapping.put("ait_aligning_cio_org", "org");
+columnMapping.put("os_name", "os_name");
+columnMapping.put("os_type", "os_type");
+columnMapping.put("os_version", "os_version");
+columnMapping.put("server_function", "server_function");
+columnMapping.put("three_dot_hirerachy", "threedot_hirerachy");
+columnMapping.put("corecount", "total_cores");
+columnMapping.put("ait_number", "ait_id");
+
 
 
 <dependency>
