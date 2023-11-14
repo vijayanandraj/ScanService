@@ -1,6 +1,26 @@
 
 Commiting changes from ChatGPT text. This can be a game changer for work.
 
+DECLARE @TableName NVARCHAR(256) = 'OriginalTable';
+DECLARE @SQL NVARCHAR(MAX) = '';
+
+SELECT @SQL += 'CREATE ' +
+    CASE WHEN i.is_primary_key = 1 THEN 'PRIMARY KEY '
+         WHEN i.is_unique = 1 THEN 'UNIQUE '
+         ELSE ''
+    END +
+    i.type_desc + ' INDEX ' + i.name + ' ON ' + @TableName +
+    ' (' +
+    STRING_AGG(c.name, ', ') WITHIN GROUP (ORDER BY ic.key_ordinal) +
+    ')' + CHAR(13) + CHAR(10)
+FROM sys.indexes i
+INNER JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
+INNER JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
+WHERE i.object_id = OBJECT_ID(@TableName) AND i.is_primary_key = 0 AND i.is_unique_constraint = 0
+GROUP BY i.object_id, i.index_id, i.name, i.is_primary_key, i.is_unique, i.type_desc;
+
+PRINT @SQL;
+
 
 @Override
 @Job(name = "MDH_AIT_Infra_Job", retries = 0)
