@@ -1,12 +1,48 @@
-Hey Vijay! To automate checking if a specific Artifactory image is used by any running pods in OpenShift using Python, you'll need to interact with OpenShift's API. This task involves a couple of key steps:
+import requests
+import json
 
-1. **Retrieving Pod Information**: Using OpenShift's API to get the details of all running pods.
-2. **Extracting Image Information**: Parsing the pod details to identify the images they are using.
-3. **Comparing with Your Artifactory Image**: Checking if any of these images match the specific Artifactory image you're interested in.
+OPENSHIFT_API_URL = "https://your-openshift-api-server-url"
+USERNAME = "your-username"
+PASSWORD = "your-password"
 
-You'd likely need a Python package like `requests` to make API calls to OpenShift. Also, you'll need access credentials for OpenShift to make authenticated API calls.
+def get_oauth_token():
+    data = {
+        'grant_type': 'password',
+        'client_id': 'openshift-challenging-client',
+        'username': USERNAME,
+        'password': PASSWORD
+    }
+    headers = {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
+    }
+    response = requests.post(f"{OPENSHIFT_API_URL}/oauth/authorize", data=data, headers=headers, verify=False)
+    if response.status_code == 200:
+        return json.loads(response.text)['access_token']
+    else:
+        print("Failed to obtain token")
+        return None
 
-Here's a skeleton of how the script might look:
+def get_running_pods(token):
+    # Example function to get running pods
+    headers = {
+        'Authorization': f'Bearer {token}',
+    }
+    # ... rest of your function ...
+
+# Main execution
+def main():
+    token = get_oauth_token()
+    if token:
+        pods = get_running_pods(token)
+        # ... rest of your script ...
+    else:
+        print("Authentication failed")
+
+if __name__ == "__main__":
+    main()
+
+
 
 ```python
 import requests
@@ -53,16 +89,6 @@ def main():
 if __name__ == "__main__":
     main()
 ```
-
-Some points to note:
-
-- Replace `YOUR_ACCESS_TOKEN` with your OpenShift access token.
-- Modify `OPENSHIFT_API_URL` and `SPECIFIC_IMAGE` with your actual OpenShift API URL and the Artifactory image you're looking for.
-- The `verify=False` in the `requests.get()` call is for bypassing SSL verification, useful for testing. In a production environment, you should use `verify=True`.
-
-Remember, this is just a basic example. Depending on your specific needs and OpenShift setup, you might need to adjust the API endpoints, authentication method, or other details. Also, it's a good practice to handle possible exceptions for the `requests` calls, which I haven't included here for simplicity. 
-
-Does this align with what you were thinking, or would you like more depth in any specific area of the script? 🤔💻
 
 
 
