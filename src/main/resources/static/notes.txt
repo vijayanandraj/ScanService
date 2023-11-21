@@ -3,6 +3,18 @@ def get_pods_in_namespace(oc_client, namespace):
     pods = v1_pods.get(namespace=namespace)
     return pods
 
+def is_image_in_use(oc_client, namespace, image):
+    v1_pods = oc_client.resources.get(api_version='v1', kind='Pod')
+    pods = v1_pods.get(namespace=namespace)
+
+    for pod in pods.items:
+        containers = pod.spec.containers
+        for container in containers:
+            if container.image == image:
+                print(f"Image {image} found in pod {pod.metadata.name} in namespace {namespace}")
+                return True
+    return False
+
 import requests
 import json
 
