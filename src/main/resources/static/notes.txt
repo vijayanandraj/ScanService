@@ -1,3 +1,33 @@
+AutoVulnHealer: The Comprehensive Container Security Solution
+
+AutoVulnHealer is an innovative, automated tool designed to enhance the security and efficiency of containerized environments. Its core functionality revolves around the identification, management, and remediation of vulnerabilities in container images, making it an essential asset for modern DevOps and IT security teams.
+
+Key Features:
+
+Vulnerability Assessment and Management: AutoVulnHealer scans container images for known vulnerabilities, leveraging a comprehensive database of CVEs (Common Vulnerabilities and Exposures). It ensures that all potential security risks are identified and categorized for action.
+
+Unused Image Detection and Cleanup: The tool intelligently identifies container images that are not actively used in pods. It integrates with JFrog Artifactory API to safely remove these unused images, thereby reducing clutter and potential attack vectors.
+
+Active Image Analysis and Reporting: For images in use, AutoVulnHealer generates detailed reports. These reports include information on the pod name, OpenShift namespace, image name, and associated unique vulnerabilities. This data is compiled into an accessible Excel file for easy review and auditing.
+
+Automated Remediation Planning: Perhaps its most innovative feature, AutoVulnHealer can automatically generate an action plan or 'recipe' to address identified vulnerabilities. This proactive approach streamlines the process of securing container environments.
+
+Future Integration Capabilities: Looking ahead, AutoVulnHealer is poised for integration with Horizon Insights/Artifactory. This will enable checks on whether the images are the latest release versions and provide critical support for rollback operations.
+
+Use Cases:
+
+DevOps Teams: Streamlining the process of identifying and fixing vulnerabilities in container environments.
+Security Professionals: Offering a robust tool for proactive security management in containerized applications.
+IT Administrators: Providing a comprehensive overview of container image usage and security status.
+Benefits:
+
+Enhanced Security: By keeping container environments free from known vulnerabilities and unused images.
+Operational Efficiency: Automating routine tasks saves time and reduces the likelihood of human error.
+Compliance and Reporting: Facilitating better compliance with security standards and simplifying audit processes.
+In summary, AutoVulnHealer is not just a tool; it's a comprehensive solution for ensuring the security and efficiency of containerized applications in a fast-paced, ever-evolving tech landscape.
+
+
+
 def get_pods_in_namespace(oc_client, namespace):
     v1_pods = oc_client.resources.get(api_version='v1', kind='Pod')
     pods = v1_pods.get(namespace=namespace)
