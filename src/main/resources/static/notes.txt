@@ -49,8 +49,6 @@ My practical experience in running modernization initiatives is somewhat limited
 This has occasionally made it challenging to develop and justify modernization strategies and TCO assessments, as these often rely on external literature rather than on in-house data and experiences.
 Recognizing this gap, I see an opportunity for improvement by potentially bringing in external/intra-bank expertise. This addition could offer fresh perspectives, practical experience in cloud adoption and modernization, and assist in making more data-driven decisions. Such support could not only enhance our strategies but also strengthen our ability to defend our decisions with solid evidence and real-world examples.
 
-
-
 AutoVulnHealer: The Comprehensive Container Security Solution
 
 AutoVulnHealer is an innovative, automated tool designed to enhance the security and efficiency of containerized environments. Its core functionality revolves around the identification, management, and remediation of vulnerabilities in container images, making it an essential asset for modern DevOps and IT security teams.
