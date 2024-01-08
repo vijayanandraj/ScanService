@@ -1,3 +1,6 @@
+=TEXTJOIN("", TRUE, IF(ISNUMBER(MID(A1, ROW(INDIRECT("1:"&LEN(A1))), 1) * 1), MID(A1, ROW(INDIRECT("1:"&LEN(A1))), 1), ""))
+
+
 Architecture Leadership in MAT Project
 Spearheaded the architecture, design, and development of the MAT tool, serving as the primary architect for the product team. This tool stands as a cornerstone in our modernization initiatives.
 Pioneered the transition of the Workload Module in MAT 2.0 from Python to Java, laying a robust foundation and enabling dynamic surveys for seamless question updates without code modifications.
