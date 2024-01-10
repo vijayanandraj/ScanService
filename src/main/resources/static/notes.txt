@@ -1,56 +1,55 @@
-=TEXTJOIN("", TRUE, IF(ISNUMBER(MID(A1, ROW(INDIRECT("1:"&LEN(A1))), 1) * 1), MID(A1, ROW(INDIRECT("1:"&LEN(A1))), 1), ""))
+import requests
+from configparser import ConfigParser
+from termcolor import colored
+import json
 
+# Configurations
+environments = {
+    "dev": {"role_id": "zekssl", "secret_id": "432234-23423424-234324324"},
+    "sit": {"role_id": "zekvvl", "secret_id": "232333-23423424-234324324"},
+    "uat": {"role_id": "zekrry", "secret_id": "345435-23423424-234324324"},
+}
 
-Architecture Leadership in MAT Project
-Spearheaded the architecture, design, and development of the MAT tool, serving as the primary architect for the product team. This tool stands as a cornerstone in our modernization initiatives.
-Pioneered the transition of the Workload Module in MAT 2.0 from Python to Java, laying a robust foundation and enabling dynamic surveys for seamless question updates without code modifications.
-Took a mentoring role in critical tasks such as the development of the Dashboard and PDF export features, while also designing and implementing a versatile scoring engine compatible with multiple scan engines like CSA and RedHat MTA.
+# Read token values from a properties file
+config = ConfigParser()
+config.read('tokens.properties')
 
-Websphere Support Enhancements
-Authored comprehensive documentation for 54 unique rule groups identified within Websphere, enhancing our team's understanding and efficiency.
-Guided the team in the creation of seven major recipes for Websphere, drawing on insights from 45 application scans, and played a pivotal role in integrating MTA, facilitating valuable comparisons and collaborations with the Middleware team.
+# Base URL
+base_url = "https://vault-dev.vijay.com"
 
-Advancements in Dotnet Support
-Innovated the Scoring Logic for CSA, demonstrating versatility and technical expertise.
-Developed a Python script to parse CSA results and Dotnet Metadata, streamlining the data extraction, transformation, and loading process into the MAT System, in collaboration with Dotnet experts to map components to workloads effectively.
+for env, credentials in environments.items():
+    # Construct headers and body for the login request
+    login_headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "x-vault-namespace": f"ait/73717/mat/{env}"
+    }
+    login_response = requests.post(f"{base_url}/auth/login", headers=login_headers, json=credentials)
 
-Scan as a Service Initiative
-Led the architecture, design, and execution of the Scan as a Service module, a critical component in automating numerous manual processes and advancing MAT towards a self-service portal.
-Despite a stringent timeline, the module was successfully built and tested within 2-3 weeks, establishing a solid foundation for real-time scan services and facilitating its adaptation by the CRR team for their specific needs.
-Mentored the team on this new codebase, ensuring they can independently enhance and extend the service.
+    # Extract client_token
+    client_token = login_response.json()['auth']['client_token']
 
-Reference Data Service and Innovation
-Led the architecture, design, mentorship and implementation of the reference data service for TechADS and MDH.
-Introduced the JobRunr Framework/Library as a proof of concept for batch job execution, exploring viable alternatives to Autosys for better compatibility with containerized environments.
+    # Construct headers for the write request
+    write_headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "x-vault-namespace": f"ait/73717/mat/{env}",
+        "x-vault-token": client_token
+    }
 
-TCO Implementation and Analysis
-Undertook the challenging and critical task of analyzing projected costs for modernization efforts, navigating the complexities of limited data and undefined design models.
+    # Dynamically build the data payload from the properties file
+    data_payload = {key: value for key, value in config.items(env)}
 
-Product Evangelization and Roadmap Development for MAT
-Presented MAT in over 15 forums, including Innovation Councils and team meetings, showcasing its capabilities and value to a wide range of stakeholders.
-Developed extensive content focused on modernization strategies and the specifics of MAT, demonstrating deep expertise and thought leadership in this domain.
-Crafted a comprehensive 'Big Picture' document, outlining a clear and strategic roadmap for the future development and implementation of MAT.
-Created an impactful Value Proposition Deck for MAT, tailored for leadership consumption.
-This presentation made a significant impression during the visits of Craig and Gully, highlighting MAT's potential and aligning with organizational goals.
+    # Perform the write request
+    requests.post(f"{base_url}/v1/secrets/data/scan{env}", headers=write_headers, json={"data": data_payload})
 
+    # Validation GET request
+    get_response = requests.get(f"{base_url}/v1/secrets/data/scan{env}", headers=write_headers)
+    pretty_response = json.dumps(get_response.json(), indent=4)
+    print(colored(pretty_response, 'green'))  # Color for payload
 
-Contributions to CDE and GBS Teams
-Pioneering two patents based on MAT, with plans to actively pursue them starting next year. This initiative represents a significant leap in our technological and intellectual property capabilities.
-Recognized as the go-to expert for architecture and technical guidance within the CDE team. Consistently provided mentoring, consulting, and code support, enhancing team performance and knowledge.
-Played a key role in multiple OPEX initiatives, contributing to the collection and analysis of crucial data, thereby driving efficiency and innovation in our operations.
-Actively involved in the solutioning for the EET proposal, focusing on aligning layout with the guiding principles of Modernization and Vulnerability Management.
-Currently developing an Automated Vulnerability Solution, designed to streamline vulnerability management processes. Successfully conducted a proof of concept, laying the groundwork for an end-to-end solution that promises to significantly reduce associated challenges.
+# Note: Add error handling and response validation as necessary
 
-Played a pivotal role in the exceptional growth of our team, which expanded from 5 to 50 members within a year. My primary focus was on ensuring a smooth assimilation of new members, accelerating their journey to becoming productive and integrated team players.
-Leveraging my people skills and approachable nature, I established an open and supportive environment where team members felt comfortable seeking guidance and asking questions, no matter how small.
-Actively participated in and often spearheaded team events, lunches, and parties, which were instrumental in strengthening team bonds and camaraderie. These efforts helped in cultivating a team spirit that resonates with enthusiasm and collaboration.
-I take immense pride in being part of this team. It's truly one of the best I've had the pleasure of working with in recent times, marked by a supportive, inclusive, and highly productive atmosphere.
-
-* Areas of Improvement
-One of the challenges I've encountered stems from my long tenure of 12 years at the bank, including the last 5 years in the Cloud team.
-My practical experience in running modernization initiatives is somewhat limited.
-This has occasionally made it challenging to develop and justify modernization strategies and TCO assessments, as these often rely on external literature rather than on in-house data and experiences.
-Recognizing this gap, I see an opportunity for improvement by potentially bringing in external/intra-bank expertise. This addition could offer fresh perspectives, practical experience in cloud adoption and modernization, and assist in making more data-driven decisions. Such support could not only enhance our strategies but also strengthen our ability to defend our decisions with solid evidence and real-world examples.
 
 AutoVulnHealer: The Comprehensive Container Security Solution
 
