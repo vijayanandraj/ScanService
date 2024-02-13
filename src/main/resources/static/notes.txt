@@ -1,3 +1,63 @@
+pip install "apache-airflow==YOUR_AIRFLOW_VERSION" --constraint path/to/your/constraints-file.txt
+
+airflow db init
+
+airflow users create \
+    --username admin \
+    --firstname YOUR_FIRST_NAME \
+    --lastname YOUR_LAST_NAME \
+    --role Admin \
+    --email YOUR_EMAIL@example.com
+
+airflow webserver --port 8080
+
+airflow scheduler
+
+from airflow import DAG
+from airflow.operators.python_operator import PythonOperator
+from datetime import datetime, timedelta
+
+def my_first_function():
+    print("Hello from the first function!")
+
+def my_second_function():
+    print("Hello from the second function!")
+
+default_args = {
+    'owner': 'airflow',
+    'depends_on_past': False,
+    'start_date': datetime(2021, 1, 1),
+    'email_on_failure': False,
+    'email_on_retry': False,
+    'retries': 1,
+    'retry_delay': timedelta(minutes=5),
+}
+
+dag = DAG('simple_dag',
+          default_args=default_args,
+          description='A simple DAG',
+          schedule_interval=timedelta(days=1),
+          )
+
+t1 = PythonOperator(
+    task_id='first_function',
+    python_callable=my_first_function,
+    dag=dag,
+)
+
+t2 = PythonOperator(
+    task_id='second_function',
+    python_callable=my_second_function,
+    dag=dag,
+)
+
+t1 >> t2
+
+
+
+
+
+
  propose transitioning our PySpark ETL jobs from VMs to an Airflow-based container solution with serverless PySpark. This move offers improved scalability, cost efficiency, and a more streamlined workflow, positioning us well for future data processing challenges."
 
  flow in this context acts as a powerful orchestrator, managing and scheduling our ETL jobs with greater efficiency and reliability. It provides a user-friendly interface for monitoring workflows, ensuring smoother, more transparent operations.
