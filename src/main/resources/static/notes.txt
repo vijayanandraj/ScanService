@@ -1,3 +1,11 @@
+items.find({
+    "repo": "my-example-repo",
+    "created": {
+        "$gte": "2024-02-24T00:00:00.000Z",
+        "$lte": "2024-02-25T00:00:00.000Z"
+    }
+})
+
 pip install "apache-airflow==YOUR_AIRFLOW_VERSION" --constraint path/to/your/constraints-file.txt
 
 airflow db init
