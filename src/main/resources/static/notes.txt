@@ -1,3 +1,40 @@
+import redis
+import time
+
+# Connect to your Redis node
+redis_host = "localhost"  # Change this to your Redis node's IP or hostname
+redis_port = 6379  # Adjust if your Redis server uses a different port
+r = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
+
+def load_test_redis(total_operations=10000):
+    write_times = []
+
+    for i in range(total_operations):
+        start_time = time.time()
+        # Performing a simple write operation. Adjust the key-value pair as needed.
+        r.set(f"key-{i}", f"value-{i}")
+        end_time = time.time()
+
+        # Calculating the time taken for the write operation
+        operation_time = end_time - start_time
+        write_times.append(operation_time)
+
+        if i % 100 == 0:  # Just to keep track of progress without flooding the console
+            print(f"Completed {i} operations")
+
+    # Let's calculate some basic performance metrics
+    avg_time = sum(write_times) / len(write_times)
+    max_time = max(write_times)
+    min_time = min(write_times)
+
+    print(f"Average write time: {avg_time} seconds")
+    print(f"Maximum write time: {max_time} seconds")
+    print(f"Minimum write time: {min_time} seconds")
+
+# Kick off the test
+load_test_redis()
+
+
 https://www.elastic.co/guide/en/observability/current/ci-cd-observability.html
 
 https://github.com/open-telemetry/oteps/pull/223
