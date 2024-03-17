@@ -1,3 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Price Tag with Vertical Lines</title>
+<style>
+  .price-tag {
+    position: relative;
+    border: 2px solid #000;
+    width: 150px; /* Adjust width as necessary */
+    height: 75px; /* Adjust height as necessary */
+    background-color: #FFFFE0; /* Light yellow background */
+    text-align: center;
+    font-family: Arial, sans-serif;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .price-tag::before,
+  .price-tag::after {
+    content: '';
+    position: absolute;
+    top: 10px; /* Space from top, adjust as necessary */
+    bottom: 10px; /* Space from bottom, adjust as necessary */
+    width: 2px; /* Line thickness */
+    background: #000; /* Line color */
+  }
+
+  .price-tag::before {
+    left: 10px; /* Position from the left */
+  }
+
+  .price-tag::after {
+    right: 10px; /* Position from the right */
+  }
+
+  .price {
+    font-size: 24px; /* Adjust as necessary */
+    font-weight: bold;
+    padding: 0 20px; /* Adjust as necessary */
+  }
+</style>
+</head>
+<body>
+
+<div class="price-tag">
+  <div class="price">$404.8</div>
+</div>
+
+</body>
+</html>
+
+
+
 import redis
 import time
 import json
