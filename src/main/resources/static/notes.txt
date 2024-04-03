@@ -1,3 +1,28 @@
+import os
+import subprocess
+import tempfile
+import shutil
+
+# Path to the directory you want to scan
+directory_to_scan = "/path/to/your/directory"
+
+# Iterate over files in the directory
+for filename in os.listdir(directory_to_scan):
+    if filename.endswith(".msi"):
+        # Create a temporary directory for extraction
+        with tempfile.TemporaryDirectory() as temp_dir:
+            msi_path = os.path.join(directory_to_scan, filename)
+
+            # Extract the MSI file using LessMSI or another extraction tool
+            # Ensure LessMSI or the equivalent is accessible from the command line
+            subprocess.run(["lessmsi", "x", msi_path, temp_dir], check=True)
+
+            # Scan the extracted files with the Binary App Scanner
+            # Replace 'binary_app_scanner_command' with the actual command for your scanner
+            subprocess.run(["binary_app_scanner_command", temp_dir], check=True)
+
+            # Temporary directory and its contents are automatically cleaned up
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
