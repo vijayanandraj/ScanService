@@ -1,3 +1,49 @@
+Integrated Development Environment (IDE) Support:
+
+As a developer, I want guidance on setting up my IDE with:
+Recommended plugins/extensions to enhance my development workflow.
+Configuration files to ensure a consistent environment across the team.
+Tool Discovery and Management:
+
+As a developer, I want to discover tools and services that can help me with:
+General development tasks (e.g., Git, Docker) for efficiency.
+Specific needs for our tech stack to leverage the best tools available.
+Code Repository Access and Management:
+
+As a developer, I want to easily access code repositories and understand:
+Branching strategies to collaborate effectively with my team.
+Commit message conventions to maintain a clear project history.
+Integration with code review tools to ensure quality code is being merged.
+Continuous Integration/Continuous Deployment (CI/CD) Integration:
+
+As a developer, I want to interact with CI/CD pipelines to:
+Set up new projects quickly.
+Understand pipeline results for faster troubleshooting.
+Improve the reliability of our deployments.
+Issue Tracking and Project Management Tools:
+
+As a developer, I want to efficiently manage tasks and track issues by:
+Reporting bugs to maintain software quality.
+Requesting features to enhance our products.
+Managing tasks to meet project deadlines.
+Forums, Q&A Sections, and Internal Blogging:
+
+As a developer, I want to participate in a community where I can:
+Share knowledge and learn from my peers.
+Ask questions to resolve blockers quickly.
+Read and write articles about solutions and challenges.
+Learning and Development Resources:
+
+As a developer, I want to access learning resources to:
+Find onboarding materials for a smooth start.
+Explore advanced topics for continuous learning and growth.
+Feedback Loop and Improvement Suggestions:
+
+As a developer, I want to provide feedback on the portal to:
+Report issues for a smoother experience.
+Suggest improvements to meet our evolving needs.
+Request new features to enhance our productivity.
+
 import os
 import subprocess
 import tempfile
