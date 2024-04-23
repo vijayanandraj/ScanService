@@ -1,3 +1,11 @@
+Oracle as the Data Source: Utilize your Oracle database to continuously generate data. You'll need to configure it for CDC (Change Data Capture), likely using Oracle's LogMiner or the Oracle GoldenGate facility to capture data changes.
+Confluent Oracle CDC Connector: This component will be responsible for capturing changes from the Oracle database logs and pushing them to Kafka topics. It serves as the bridge between Oracle and Kafka.
+Apache Kafka: Kafka acts as the central messaging backbone. It receives data streams from Oracle via the CDC Connector and can handle massive throughputs and store data streams before they are processed to MongoDB.
+Confluent KSQL: Use KSQL for stream processing tasks. It can transform, filter, aggregate, and enrich the data streams in real time before they are sent to MongoDB.
+MongoDB Connector for Apache Kafka: This connector takes the processed data streams from Kafka topics and sinks them into MongoDB. Configure it to ensure that data is efficiently loaded into MongoDB collections.
+Enterprise MongoDB: Your final data store. Ensure that your MongoDB setup is scaled to handle the incoming data loads and is configured for high availability and backup as required by your enterprise standards.
+Monitoring and Management Tools: Don't forget to implement monitoring for all components. Tools like Confluent Control Center or Kafka's built-in monitoring capabilities can help monitor Kafka performance, while Oracle and MongoDB may require their specific monitoring setups.
+
 import org.artifactory.repo.RepoPath
 import org.artifactory.fs.ItemInfo
 import org.artifactory.md.Properties
