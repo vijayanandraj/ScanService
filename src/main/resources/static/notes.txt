@@ -1,3 +1,17 @@
+Understanding of the Current Integration Strategy:
+We are customizing the Microsoft SBOM tool to automatically scan binaries and generate an SBOM when artifacts are uploaded. This process is facilitated by a custom Artifactory plugin that captures the upload event and triggers the scan. The resulting SBOM data is then stored in our database and exposed via an API.
+
+Output of Analysis:
+The initial strategy was to integrate this SBOM data with JFrog XRay to enhance our vulnerability scanning capabilities. XRay is designed to perform security and compliance analysis by scanning against a database of known vulnerabilities. It checks artifacts and their dependencies to identify security vulnerabilities and license issues.
+
+Identified Gaps:
+Upon reviewing the documentation and capabilities of XRay, it became apparent that there is a significant integration gap:
+
+XRay’s Expectations: XRay anticipates a vulnerability database to function, not an SBOM database. It is not configured to use SBOM data for its vulnerability scanning processes.
+SBOM’s Role: The SBOM provides a comprehensive inventory of software components, which is invaluable for transparency and compliance but does not directly correlate with the vulnerability analysis processes that XRay is designed to perform.
+
+
+
 Oracle as the Data Source: Utilize your Oracle database to continuously generate data. You'll need to configure it for CDC (Change Data Capture), likely using Oracle's LogMiner or the Oracle GoldenGate facility to capture data changes.
 Confluent Oracle CDC Connector: This component will be responsible for capturing changes from the Oracle database logs and pushing them to Kafka topics. It serves as the bridge between Oracle and Kafka.
 Apache Kafka: Kafka acts as the central messaging backbone. It receives data streams from Oracle via the CDC Connector and can handle massive throughputs and store data streams before they are processed to MongoDB.
