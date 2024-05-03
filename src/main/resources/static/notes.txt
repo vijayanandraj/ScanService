@@ -1,3 +1,169 @@
+import org.artifactory.repo.RepoPath
+import org.artifactory.request.Request
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption
+import java.nio.file.Paths
+import org.slf4j.Logger
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipEntry
+
+
+interface FileStrategy {
+    void execute(File scanInputFile, Logger log);
+}
+
+class ZipFileStrategy implements FileStrategy {
+    void execute(File scanInputFile, Logger log) {
+        log.warn("Handling ZIP file")
+        File destDir = new File(scanInputFile.parent, scanInputFile.name.replaceAll(/\.zip$/, ""))
+        if (!destDir.exists()) {
+            destDir.mkdirs()  // Create the directory if it doesn't exist
+        }
+        unzip(scanInputFile, destDir, log)
+        runMicrosoftSBOM(destDir, log)
+        //Run SBOM Tool
+    }
+
+    private void unzip(File zipFile, File destDir, Logger log) {
+        byte[] buffer = new byte[1024]
+        ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile))
+        ZipEntry zipEntry = zis.getNextEntry()
+        while (zipEntry != null) {
+            File newFile = newFile(destDir, zipEntry)
+            if (zipEntry.isDirectory()) {
+                newFile.mkdirs()
+            } else {
+                FileOutputStream fos = new FileOutputStream(newFile)
+                int len
+                while ((len = zis.read(buffer)) > 0) {
+                    fos.write(buffer, 0, len)
+                }
+                fos.close()
+            }
+            zipEntry = zis.getNextEntry()
+        }
+        zis.closeEntry()
+        zis.close()
+        log.warn("Unzipped to: ${destDir.absolutePath}")
+    }
+
+    private File newFile(File destinationDir, ZipEntry zipEntry) throws IOException {
+        File destFile = new File(destinationDir, zipEntry.getName())
+        String destDirPath = destinationDir.getCanonicalPath()
+        String destFilePath = destFile.getCanonicalPath()
+
+        if (!destFilePath.startsWith(destDirPath + File.separator)) {
+            throw new IOException("Entry is outside of the target dir: " + zipEntry.getName())
+        }
+        return destFile
+    }
+
+    private void runMicrosoftSBOM(File zipExtractedFolder, Logger log) {
+        try {
+            log.warn("Zip Extracted Folder ==> " + zipExtractedFolder)
+            List<String> command = Arrays.asList(
+                    "C:/tools/sbom-tool-win-x64.exe",
+                    "generate",
+                    "-b",
+                    zipExtractedFolder.getAbsolutePath(),
+                    "-m",
+                    zipExtractedFolder.getAbsolutePath(),
+                    "-pn",
+                    "Test",
+                    "-pv",
+                    "1.0",
+                    "-ps",
+                    "BOA"
+            )
+            ProcessBuilder builder = new ProcessBuilder(command)
+            builder.redirectErrorStream(true);  // Redirect error stream to standard output stream
+            Process process = builder.start();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log.info(line);
+                }
+            }
+            int exitCode = process.waitFor();
+            log.warn("Microsoft SBOM tool exited with code: " + exitCode);
+        } catch (Exception e) {
+            log.error("Error running Microsoft SBOM tool", e)
+        }
+    }
+
+
+
+}
+
+class ExeFileStrategy implements FileStrategy {
+    void execute(File scanInputFile, Logger log) {
+        log.warn("Handling EXE file")
+    }
+}
+
+class MsiFileStrategy implements FileStrategy {
+    void execute(File scanInputFile, Logger log) {
+        log.warn("Handling MSI file")
+    }
+}
+
+class OtherFileStrategy implements FileStrategy {
+    void execute(File scanInputFile, Logger log){
+        log.warn "Handling Other File"
+    }
+}
+
+// Strategy Factory to get the appropriate strategy
+class StrategyFactory {
+    static FileStrategy getStrategy(String extension) {
+        switch (extension) {
+            case "zip":
+                return new ZipFileStrategy()
+            case "exe":
+                return new ExeFileStrategy()
+            case "msi":
+                return new MsiFileStrategy()
+            default:
+               return new OtherFileStrategy()
+        }
+    }
+}
+
+upload {
+    beforeUploadRequest { Request request, RepoPath repoPath ->
+        log.warn "***** Before Upload Request *****"
+        InputStream inputStream = null
+        try {
+            inputStream = request.getInputStream()
+            String tempDir = System.getProperty("java.io.tmpdir");
+            log.warn "Temp Dir ==> " + tempDir
+            log.warn "File name ==> " + repoPath.getPath() + " ==> " + repoPath.getName()
+            //File tempFile = File.createTempFile("upload", ".tmp")
+            //tempFile.withOutputStream { os -> inputStream.copyTo(os) }
+            Path tempFilePath = Paths.get(tempDir, repoPath.getName())
+            if(!Files.exists(tempFilePath)){
+                Files.createFile(tempFilePath)
+            }
+            Files.copy(inputStream, tempFilePath, StandardCopyOption.REPLACE_EXISTING)
+            def fileName = repoPath.getName()
+            String fileExtension = fileName.substring(fileName.lastIndexOf('.') + 1)
+            FileStrategy strategy = StrategyFactory.getStrategy(fileExtension)
+            strategy.execute(tempFilePath.toFile(), log)
+
+            log.warn "Temp file absolute path ==> " + tempFilePath.toAbsolutePath()
+        }catch (Exception ex){
+            ex.printStackTrace()
+        }
+        finally {
+            log.warn "**** In Finally Block ****"
+        }
+    }
+}
+
+
+
+
 Understanding of the Current Integration Strategy:
 We are customizing the Microsoft SBOM tool to automatically scan binaries and generate an SBOM when artifacts are uploaded. This process is facilitated by a custom Artifactory plugin that captures the upload event and triggers the scan. The resulting SBOM data is then stored in our database and exposed via an API.
 
