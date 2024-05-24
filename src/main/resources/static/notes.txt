@@ -1,3 +1,64 @@
+Problem Statement: Bridging the Gap in Storage Solutions for OpenShift
+
+Background on NAS
+Network-Attached Storage (NAS) is widely used by a majority of applications due to its simplicity, reliability, and direct support for disaster recovery (DR). Applications can easily access NAS as it is mounted directly into the file system, providing a familiar and efficient way to handle data.
+
+Limitations in OpenShift
+However, in our current OpenShift ecosystem, NAS is not natively supported. This presents a challenge as we seek to provide a storage solution that matches NAS in terms of reliability and ease of use.
+
+Issues with Current Alternatives
+ObjectStore: While our object store based on the Hitachi Content Platform offers a viable storage solution, its designation as a Tier 6 availability platform renders it suboptimal for higher-tier applications that demand greater availability.
+Persistent Volumes (PVs): Although PVs offer high availability and are well-integrated within the OpenShift environment, they lack robust backup options and are local to the cluster, which limits their effectiveness for disaster recovery.
+
+Proposed Solution: Combining PVs with ObjectStore
+To address these gaps and emulate the functionality of NAS, we propose a hybrid solution that combines the high availability of Persistent Volumes with the expansive storage and backup capabilities of the Object Store. This combination aims to deliver:
+
+Enhanced Data Availability: By leveraging both PVs and Object Store, we can ensure high availability of data, akin to what NAS provides.
+
+Reliable Backup Solutions: Integrating Object Store allows us to incorporate its backup capabilities, compensating for the lack of such features in PVs.
+
+Disaster Recovery: This hybrid approach enhances our disaster recovery capabilities, ensuring that data remains safe and accessible even during failures, mirroring the DR support typically associated with NAS.
+
+Conclusion
+This strategy aims to bridge the functionality gap left by the lack of native NAS support in OpenShift, providing a robust, reliable, and NAS-equivalent storage solution suitable for high-tier applications. By combining the strengths of PVs and Object Store, we can create a cohesive storage solution that meets our needs for accessibility, reliability, and disaster recovery in the OpenShift ecosystem.
+
+
+2. Objective
+To develop a storage solution that combines the local high availability and fast access of Persistent Volumes with the scalable, backed-up storage capacity of an Object Store, providing a comprehensive, NAS-like storage system suitable for higher-tier applications in OpenShift.
+
+3. Requirements
+High Availability: Ensure that data is accessible with minimal downtime.
+Data Integrity and Security: Maintain data integrity and secure data both at rest and in transit.
+Scalability: System must scale horizontally to accommodate growing data needs.
+Disaster Recovery: Enhance disaster recovery capabilities to match those provided by traditional NAS.
+Ease of Access: Maintain simplicity in data access, akin to traditional file systems.
+
+4. Proposed Architecture
+The proposed solution involves the following key components and architecture:
+
+Persistent Volumes (PVs): Serve as the primary storage mechanism, directly attached to application pods within OpenShift for high-speed data access.
+Object Store (Hitachi Content Platform): Acts as a secondary, backup storage solution, providing long-term storage and disaster recovery capabilities.
+FileSync Component: A custom-developed sidecar container that manages the replication of data between PVs and the Object Store.
+5. Component Description
+Persistent Volumes:
+
+Utilized for storing active data that requires fast access.
+Configured to provide ReadWriteMany capabilities for shared access when necessary.
+Object Store:
+
+Used for data backups and as a failover solution in the event of primary storage failure.
+Configured to ensure data is replicated across multiple geographical locations if required.
+FileSync Component:
+
+Monitors file system events on PVs.
+Replicates data changes to the Object Store in real time.
+Ensures data consistency and handles conflict resolution.
+Provides tools for data recovery and failback operations.
+
+
+
+
+
 import org.artifactory.repo.RepoPath
 import org.artifactory.request.Request
 import java.nio.file.Files
