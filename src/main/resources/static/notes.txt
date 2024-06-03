@@ -1,3 +1,43 @@
+
+Yes, you can set JVM arguments in the `gradle-wrapper.properties` file to ensure they are applied when using the Gradle wrapper. This is particularly useful if you want to ensure consistent configurations across different environments and users.
+
+Here’s how you can configure the `gradle-wrapper.properties` file to include the necessary JVM arguments for TLS protocols:
+
+1. **Locate the `gradle-wrapper.properties` file**: This file is usually found in the `gradle/wrapper` directory of your project.
+
+2. **Edit the `gradle-wrapper.properties` file**: Add the JVM arguments to the `org.gradle.jvmargs` property. If this property does not exist, you can add it.
+
+Here is an example:
+
+```properties
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-6.8.3-bin.zip
+
+# Add the following line to set the JVM arguments
+org.gradle.jvmargs=-Djdk.tls.client.protocols=TLSv1,TLSv1.1,TLSv1.2,TLSv1.3 -Djavax.net.debug=ssl
+```
+
+### Explanation:
+- `org.gradle.jvmargs` is used to set JVM arguments for Gradle. Here, you are specifying the TLS protocols and enabling SSL debugging.
+- `distributionUrl` specifies the Gradle distribution to be used by the wrapper.
+
+### Benefits:
+- Consistency: Ensures all developers using the Gradle wrapper will have the same configuration.
+- Ease of Use: Simplifies configuration management, especially in CI/CD environments.
+
+### Steps:
+1. Open your project directory.
+2. Navigate to `gradle/wrapper`.
+3. Open the `gradle-wrapper.properties` file in a text editor.
+4. Add the `org.gradle.jvmargs` line as shown above.
+5. Save the file.
+
+After making these changes, when you run the Gradle wrapper (`./gradlew`), the specified JVM arguments will be applied, ensuring the TLS protocols are correctly configured.
+
+
 Problem Statement: Bridging the Gap in Storage Solutions for OpenShift
 
 Background on NAS
