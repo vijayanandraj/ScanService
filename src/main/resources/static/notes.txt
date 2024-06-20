@@ -1,3 +1,32 @@
+Appraisal Comments
+
+1. TCO Model and ROI Framework Development
+
+Initiated the creation of the first TCO model within the organization, drafting a comprehensive framework for an ROI model. This framework effectively captures direct and indirect savings, investment, and ROI calculations.
+Developed the initial model using a simple Excel sheet with hardware costs and designed a UI prototype for future development in MAT.
+2. MAT Tool Enhancements
+
+Designed and developed the self-service scan module, a critical feature for transforming MAT into a self-service portal.
+Implemented a caching mechanism for application artifacts, significantly improving the user experience by meeting key self-service scan requirements.
+3. Support for Enterprise Developer Tooling (EDT) Team
+
+Due to budget constraints and organizational changes, shifted focus to support the Enterprise Developer Tooling team while continuing to provide partial support to the cloud development and enablement team.
+Developed high-level architecture and design for OpsData, aimed at consolidating CI and CD events into a single data store for real-time dashboarding. Proposed the use of MongoDB and Change Data Capture, which received management approval.
+4. Custom SBOM Generation and Application Packaging Automation
+
+As part of EDT activities:
+Led a POC for custom SBOM generation for binaries like MSI, EXE, and VSIX files not supported by XRay Scan. Developed a JFrog Artifactory plugin to capture upload events and run the custom SBOM tool, and worked on the high-level architecture and design for its rollout.
+Collaborated with the GBS Application Packaging team to automate aspects of application packaging, aiming to reduce the ETA for DevEx tools from over 30 days to under one week. Explored alternative approaches and automation mechanisms to achieve this goal.
+5. GBS Collaboration and Consulting
+
+Consulted on data modernization aspects with Sarasawathi's team. Set up Apache Airflow in a POC environment and demonstrated a use case for utilizing Airflow in data pipelines.
+Worked with the TAMS team on a modernization business case proposal, providing consulting services for their modernization journey as part of TLF work.
+Challenges and Adaptation
+Worrking on an OpenTap work on  Bridging the Gap in Storage Solutions for OpenShift. This OpenTap idea with help us to find a Storage solution alternative as reliable as NAS
+
+Although the EDT area is new to me, I am committed to understanding how I can best contribute and am continually striving to perform at my best.
+
+
 Problem Statement: Bridging the Gap in Storage Solutions for OpenShift
 
 Background on NAS
@@ -39,19 +68,22 @@ The proposed solution involves the following key components and architecture:
 Persistent Volumes (PVs): Serve as the primary storage mechanism, directly attached to application pods within OpenShift for high-speed data access.
 Object Store (Hitachi Content Platform): Acts as a secondary, backup storage solution, providing long-term storage and disaster recovery capabilities.
 FileSync Component: A custom-developed sidecar container that manages the replication of data between PVs and the Object Store.
+
 5. Component Description
 Persistent Volumes:
 
 Utilized for storing active data that requires fast access.
 Configured to provide ReadWriteMany capabilities for shared access when necessary.
+
 Object Store:
 
 Used for data backups and as a failover solution in the event of primary storage failure.
 Configured to ensure data is replicated across multiple geographical locations if required.
+
 FileSync Component:
 
 Monitors file system events on PVs.
-Replicates data changes to the Object Store in real time.
+Replicates data changes to the Object Store in real tim
 Ensures data consistency and handles conflict resolution.
 Provides tools for data recovery and failback operations.
 
