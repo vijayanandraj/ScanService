@@ -1,664 +1,291 @@
-Appraisal Comments
-
-1. TCO Model and ROI Framework Development
-
-Initiated the creation of the first TCO model within the organization, drafting a comprehensive framework for an ROI model. This framework effectively captures direct and indirect savings, investment, and ROI calculations.
-Developed the initial model using a simple Excel sheet with hardware costs and designed a UI prototype for future development in MAT.
-2. MAT Tool Enhancements
-
-Designed and developed the self-service scan module, a critical feature for transforming MAT into a self-service portal.
-Implemented a caching mechanism for application artifacts, significantly improving the user experience by meeting key self-service scan requirements.
-3. Support for Enterprise Developer Tooling (EDT) Team
-
-Due to budget constraints and organizational changes, shifted focus to support the Enterprise Developer Tooling team while continuing to provide partial support to the cloud development and enablement team.
-Developed high-level architecture and design for OpsData, aimed at consolidating CI and CD events into a single data store for real-time dashboarding. Proposed the use of MongoDB and Change Data Capture, which received management approval.
-4. Custom SBOM Generation and Application Packaging Automation
-
-As part of EDT activities:
-Led a POC for custom SBOM generation for binaries like MSI, EXE, and VSIX files not supported by XRay Scan. Developed a JFrog Artifactory plugin to capture upload events and run the custom SBOM tool, and worked on the high-level architecture and design for its rollout.
-Collaborated with the GBS Application Packaging team to automate aspects of application packaging, aiming to reduce the ETA for DevEx tools from over 30 days to under one week. Explored alternative approaches and automation mechanisms to achieve this goal.
-5. GBS Collaboration and Consulting
-
-Consulted on data modernization aspects with Sarasawathi's team. Set up Apache Airflow in a POC environment and demonstrated a use case for utilizing Airflow in data pipelines.
-Worked with the TAMS team on a modernization business case proposal, providing consulting services for their modernization journey as part of TLF work.
-Challenges and Adaptation
-Worrking on an OpenTap work on  Bridging the Gap in Storage Solutions for OpenShift. This OpenTap idea with help us to find a Storage solution alternative as reliable as NAS
-
-Although the EDT area is new to me, I am committed to understanding how I can best contribute and am continually striving to perform at my best.
-
-
-Problem Statement: Bridging the Gap in Storage Solutions for OpenShift
-
-Background on NAS
-Network-Attached Storage (NAS) is widely used by a majority of applications due to its simplicity, reliability, and direct support for disaster recovery (DR). Applications can easily access NAS as it is mounted directly into the file system, providing a familiar and efficient way to handle data.
-
-Limitations in OpenShift
-However, in our current OpenShift ecosystem, NAS is not natively supported. This presents a challenge as we seek to provide a storage solution that matches NAS in terms of reliability and ease of use.
-
-Issues with Current Alternatives
-ObjectStore: While our object store based on the Hitachi Content Platform offers a viable storage solution, its designation as a Tier 6 availability platform renders it suboptimal for higher-tier applications that demand greater availability.
-Persistent Volumes (PVs): Although PVs offer high availability and are well-integrated within the OpenShift environment, they lack robust backup options and are local to the cluster, which limits their effectiveness for disaster recovery.
-
-Proposed Solution: Combining PVs with ObjectStore
-To address these gaps and emulate the functionality of NAS, we propose a hybrid solution that combines the high availability of Persistent Volumes with the expansive storage and backup capabilities of the Object Store. This combination aims to deliver:
-
-Enhanced Data Availability: By leveraging both PVs and Object Store, we can ensure high availability of data, akin to what NAS provides.
-
-Reliable Backup Solutions: Integrating Object Store allows us to incorporate its backup capabilities, compensating for the lack of such features in PVs.
-
-Disaster Recovery: This hybrid approach enhances our disaster recovery capabilities, ensuring that data remains safe and accessible even during failures, mirroring the DR support typically associated with NAS.
-
-Conclusion
-This strategy aims to bridge the functionality gap left by the lack of native NAS support in OpenShift, providing a robust, reliable, and NAS-equivalent storage solution suitable for high-tier applications. By combining the strengths of PVs and Object Store, we can create a cohesive storage solution that meets our needs for accessibility, reliability, and disaster recovery in the OpenShift ecosystem.
-
-
-2. Objective
-To develop a storage solution that combines the local high availability and fast access of Persistent Volumes with the scalable, backed-up storage capacity of an Object Store, providing a comprehensive, NAS-like storage system suitable for higher-tier applications in OpenShift.
-
-3. Requirements
-High Availability: Ensure that data is accessible with minimal downtime.
-Data Integrity and Security: Maintain data integrity and secure data both at rest and in transit.
-Scalability: System must scale horizontally to accommodate growing data needs.
-Disaster Recovery: Enhance disaster recovery capabilities to match those provided by traditional NAS.
-Ease of Access: Maintain simplicity in data access, akin to traditional file systems.
-
-4. Proposed Architecture
-The proposed solution involves the following key components and architecture:
-
-Persistent Volumes (PVs): Serve as the primary storage mechanism, directly attached to application pods within OpenShift for high-speed data access.
-Object Store (Hitachi Content Platform): Acts as a secondary, backup storage solution, providing long-term storage and disaster recovery capabilities.
-FileSync Component: A custom-developed sidecar container that manages the replication of data between PVs and the Object Store.
-
-5. Component Description
-Persistent Volumes:
-
-Utilized for storing active data that requires fast access.
-Configured to provide ReadWriteMany capabilities for shared access when necessary.
-
-Object Store:
-
-Used for data backups and as a failover solution in the event of primary storage failure.
-Configured to ensure data is replicated across multiple geographical locations if required.
-
-FileSync Component:
-
-Monitors file system events on PVs.
-Replicates data changes to the Object Store in real tim
-Ensures data consistency and handles conflict resolution.
-Provides tools for data recovery and failback operations.
-
-
-
-
-
-import org.artifactory.repo.RepoPath
-import org.artifactory.request.Request
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.StandardCopyOption
-import java.nio.file.Paths
-import org.slf4j.Logger
-import java.util.zip.ZipInputStream
-import java.util.zip.ZipEntry
-
-
-interface FileStrategy {
-    void execute(File scanInputFile, Logger log);
-}
-
-class ZipFileStrategy implements FileStrategy {
-    void execute(File scanInputFile, Logger log) {
-        log.warn("Handling ZIP file")
-        File destDir = new File(scanInputFile.parent, scanInputFile.name.replaceAll(/\.zip$/, ""))
-        if (!destDir.exists()) {
-            destDir.mkdirs()  // Create the directory if it doesn't exist
-        }
-        unzip(scanInputFile, destDir, log)
-        runMicrosoftSBOM(destDir, log)
-        //Run SBOM Tool
-    }
-
-    private void unzip(File zipFile, File destDir, Logger log) {
-        byte[] buffer = new byte[1024]
-        ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile))
-        ZipEntry zipEntry = zis.getNextEntry()
-        while (zipEntry != null) {
-            File newFile = newFile(destDir, zipEntry)
-            if (zipEntry.isDirectory()) {
-                newFile.mkdirs()
-            } else {
-                FileOutputStream fos = new FileOutputStream(newFile)
-                int len
-                while ((len = zis.read(buffer)) > 0) {
-                    fos.write(buffer, 0, len)
-                }
-                fos.close()
-            }
-            zipEntry = zis.getNextEntry()
-        }
-        zis.closeEntry()
-        zis.close()
-        log.warn("Unzipped to: ${destDir.absolutePath}")
-    }
-
-    private File newFile(File destinationDir, ZipEntry zipEntry) throws IOException {
-        File destFile = new File(destinationDir, zipEntry.getName())
-        String destDirPath = destinationDir.getCanonicalPath()
-        String destFilePath = destFile.getCanonicalPath()
-
-        if (!destFilePath.startsWith(destDirPath + File.separator)) {
-            throw new IOException("Entry is outside of the target dir: " + zipEntry.getName())
-        }
-        return destFile
-    }
-
-    private void runMicrosoftSBOM(File zipExtractedFolder, Logger log) {
-        try {
-            log.warn("Zip Extracted Folder ==> " + zipExtractedFolder)
-            List<String> command = Arrays.asList(
-                    "C:/tools/sbom-tool-win-x64.exe",
-                    "generate",
-                    "-b",
-                    zipExtractedFolder.getAbsolutePath(),
-                    "-m",
-                    zipExtractedFolder.getAbsolutePath(),
-                    "-pn",
-                    "Test",
-                    "-pv",
-                    "1.0",
-                    "-ps",
-                    "BOA"
-            )
-            ProcessBuilder builder = new ProcessBuilder(command)
-            builder.redirectErrorStream(true);  // Redirect error stream to standard output stream
-            Process process = builder.start();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    log.info(line);
-                }
-            }
-            int exitCode = process.waitFor();
-            log.warn("Microsoft SBOM tool exited with code: " + exitCode);
-        } catch (Exception e) {
-            log.error("Error running Microsoft SBOM tool", e)
-        }
-    }
-
-
-
-}
-
-class ExeFileStrategy implements FileStrategy {
-    void execute(File scanInputFile, Logger log) {
-        log.warn("Handling EXE file")
-    }
-}
-
-class MsiFileStrategy implements FileStrategy {
-    void execute(File scanInputFile, Logger log) {
-        log.warn("Handling MSI file")
-    }
-}
-
-class OtherFileStrategy implements FileStrategy {
-    void execute(File scanInputFile, Logger log){
-        log.warn "Handling Other File"
-    }
-}
-
-// Strategy Factory to get the appropriate strategy
-class StrategyFactory {
-    static FileStrategy getStrategy(String extension) {
-        switch (extension) {
-            case "zip":
-                return new ZipFileStrategy()
-            case "exe":
-                return new ExeFileStrategy()
-            case "msi":
-                return new MsiFileStrategy()
-            default:
-               return new OtherFileStrategy()
-        }
-    }
-}
-
-upload {
-    beforeUploadRequest { Request request, RepoPath repoPath ->
-        log.warn "***** Before Upload Request *****"
-        InputStream inputStream = null
-        try {
-            inputStream = request.getInputStream()
-            String tempDir = System.getProperty("java.io.tmpdir");
-            log.warn "Temp Dir ==> " + tempDir
-            log.warn "File name ==> " + repoPath.getPath() + " ==> " + repoPath.getName()
-            //File tempFile = File.createTempFile("upload", ".tmp")
-            //tempFile.withOutputStream { os -> inputStream.copyTo(os) }
-            Path tempFilePath = Paths.get(tempDir, repoPath.getName())
-            if(!Files.exists(tempFilePath)){
-                Files.createFile(tempFilePath)
-            }
-            Files.copy(inputStream, tempFilePath, StandardCopyOption.REPLACE_EXISTING)
-            def fileName = repoPath.getName()
-            String fileExtension = fileName.substring(fileName.lastIndexOf('.') + 1)
-            FileStrategy strategy = StrategyFactory.getStrategy(fileExtension)
-            strategy.execute(tempFilePath.toFile(), log)
-
-            log.warn "Temp file absolute path ==> " + tempFilePath.toAbsolutePath()
-        }catch (Exception ex){
-            ex.printStackTrace()
-        }
-        finally {
-            log.warn "**** In Finally Block ****"
-        }
-    }
-}
-
-
-
-
-Understanding of the Current Integration Strategy:
-We are customizing the Microsoft SBOM tool to automatically scan binaries and generate an SBOM when artifacts are uploaded. This process is facilitated by a custom Artifactory plugin that captures the upload event and triggers the scan. The resulting SBOM data is then stored in our database and exposed via an API.
-
-Output of Analysis:
-The initial strategy was to integrate this SBOM data with JFrog XRay to enhance our vulnerability scanning capabilities. XRay is designed to perform security and compliance analysis by scanning against a database of known vulnerabilities. It checks artifacts and their dependencies to identify security vulnerabilities and license issues.
-
-Identified Gaps:
-Upon reviewing the documentation and capabilities of XRay, it became apparent that there is a significant integration gap:
-
-XRay’s Expectations: XRay anticipates a vulnerability database to function, not an SBOM database. It is not configured to use SBOM data for its vulnerability scanning processes.
-SBOM’s Role: The SBOM provides a comprehensive inventory of software components, which is invaluable for transparency and compliance but does not directly correlate with the vulnerability analysis processes that XRay is designed to perform.
-
-
-
-Oracle as the Data Source: Utilize your Oracle database to continuously generate data. You'll need to configure it for CDC (Change Data Capture), likely using Oracle's LogMiner or the Oracle GoldenGate facility to capture data changes.
-Confluent Oracle CDC Connector: This component will be responsible for capturing changes from the Oracle database logs and pushing them to Kafka topics. It serves as the bridge between Oracle and Kafka.
-Apache Kafka: Kafka acts as the central messaging backbone. It receives data streams from Oracle via the CDC Connector and can handle massive throughputs and store data streams before they are processed to MongoDB.
-Confluent KSQL: Use KSQL for stream processing tasks. It can transform, filter, aggregate, and enrich the data streams in real time before they are sent to MongoDB.
-MongoDB Connector for Apache Kafka: This connector takes the processed data streams from Kafka topics and sinks them into MongoDB. Configure it to ensure that data is efficiently loaded into MongoDB collections.
-Enterprise MongoDB: Your final data store. Ensure that your MongoDB setup is scaled to handle the incoming data loads and is configured for high availability and backup as required by your enterprise standards.
-Monitoring and Management Tools: Don't forget to implement monitoring for all components. Tools like Confluent Control Center or Kafka's built-in monitoring capabilities can help monitor Kafka performance, while Oracle and MongoDB may require their specific monitoring setups.
-
-import org.artifactory.repo.RepoPath
-import org.artifactory.fs.ItemInfo
-import org.artifactory.md.Properties
-import org.artifactory.repo.service.InternalRepositoryService
-import org.artifactory.request.RequestContext
-import org.artifactory.resource.ResourceStreamHandle
-
-class ExecuteToolPlugin extends AbstractArtifactoryEventListener {
-
-    @Override
-    void register() {
-        events.beforeCreate { RequestContext context ->
-            beforeCreate(context)
-        }
-    }
-
-    void beforeCreate(RequestContext context) {
-        ResourceStreamHandle handle = context.getResourceStreamHandle()
-        if (handle?.getInputStream()) {
-            ItemInfo item = context.itemInfo
-            RepoPath repoPath = item.repoPath
-            String filePath = repoPath.toPath()
-
-            // Log the path for debugging
-            log.info "Artifact uploaded: ${filePath}"
-
-            // Define path to your executable
-            String toolPath = "/path/to/your/tool.exe"
-
-            // Execute the tool with the file path as an argument
-            String command = "${toolPath} ${filePath}"
-            Process process = command.execute()
-            int exitCode = process.waitFor()
-
-            // Check the process execution
-            if (exitCode == 0) {
-                log.info "Tool executed successfully for ${filePath}"
-            } else {
-                log.error "Tool failed with exit code ${exitCode}"
-            }
-        }
-    }
-}
-
-// Register the plugin
-new ExecuteToolPlugin().register()
-
-
-Current CI/CD event monitoring infrastructure consists of two disparate systems: Horizon Insights, which processes management reports from data that is at least 44 hours old, and Compliance Engine, which captures real-time CI/CD events but lacks tool-specific data integration and suffers from a rigid Oracle database schema. This setup impedes real-time operational decision-making and fails to leverage rich, actionable insights from tool-specific metrics.
-
-Solution Approach:
-
-Adopt a dual-system approach to maximize efficiency and data utility:
-
-MongoDB for Real-Time Monitoring: Integrate MongoDB to capture and store detailed, tool-specific CI/CD event data in real-time. Its flexible schema and robust document storage capabilities will enable immediate operational notifications and dynamic dashboard updates, addressing the current latency issues.
-Oracle Exadata for Historical Analysis: Continue utilizing Oracle for compiling N-1 day data, leveraging its powerful data warehousing capabilities for management reporting and historical trend analysis.
-
-
-Justification:
-
-Enhanced Decision-Making: Immediate data availability from MongoDB allows for quick response to CI/CD events, reducing downtime and accelerating issue resolution.
-Flexible and Adaptive Data Management: MongoDB’s schema-less nature accommodates dynamic changes in data models, essential for integrating diverse CI/CD tools and adapting to evolving data requirements.
-Scalable Architecture: MongoDB is well-suited to handle high-velocity, voluminous event data efficiently, ensuring scalability and performance beyond the existing capabilities of the Oracle system for real-time processing.
-Comprehensive Reporting and Analysis: By combining real-time operational insights from MongoDB with strategic, long-term analytics from Oracle, the organization gains a holistic view of CI/CD operations. This integration enhances both immediate operational responsiveness and informed strategic planning.
-This dual-database strategy ensures that we leverage the strengths of both MongoDB for real-time operational insights and Oracle for robust historical analysis, creating a more responsive and insightful CI/CD monitoring environment.
-
-
-
-
-sonar.analysis.tags
-
-
-
-Background: Our organization's CI/CD processes are pivotal in ensuring continuous improvement and deployment efficiency. However, the current reliance on batch processing for event data, which introduces a significant delay (typically over 44 hours), severely limits our ability to act on insights in a timely manner.
-
-
-To make the problem statement more precise and tailored to specific use cases, let’s highlight concrete scenarios that exemplify the challenges and benefits associated with implementing a real-time data capture and analysis system for CI/CD events. This will help illustrate the direct impact on daily operations and decision-making processes.
-
-Precise Problem Statement for Enhancing CI/CD Operations through Real-Time Data Capture and Analysis
-
-Background: Our organization's CI/CD processes are pivotal in ensuring continuous improvement and deployment efficiency. However, the current reliance on batch processing for event data, which introduces a significant delay (typically over 44 hours), severely limits our ability to act on insights in a timely manner.
-
-Problem: The delayed data integration into our system impedes our ability to quickly identify and respond to new issues that arise during software development, such as security vulnerabilities, code quality regressions, or deployment failures. This delay not only affects the pace of development but also compromises the quality of the software we deliver.
-
-Specific Use Cases Requiring Immediate Attention:
-
-Security Vulnerability Identification:
-
-Scenario: When a developer commits code that introduces a potential security flaw, the current system’s delay means the vulnerability might not be detected until it's too late to address it efficiently.
-Need: Real-time analysis to flag new vulnerabilities as code is committed, alerting both the developer and the pull request approver immediately.
-Code Quality Regression Tracking:
-
-Scenario: A new commit degrades the overall quality of a module, increasing its technical debt unnoticed due to slow data processing.
-Need: Instantaneous feedback on code quality metrics post-commit to prevent quality regressions from progressing to later stages of the development lifecycle.
-Build Failure Resolution:
-
-Scenario: Builds fail due to recent changes, but the lag in data processing delays debugging and prolongs downtime.
-Need: Real-time data to quickly trace build failures back to specific changes, enabling faster reversion or correction.
-Deployment Bottlenecks:
-
-Scenario: Deployment pipelines have variable performance, but identification of bottlenecks is delayed, affecting all subsequent operations.
-Need: Immediate insights into pipeline performance to optimize flow and reduce waiting times.
-Solution Proposal: Implement a real-time monitoring and analysis system integrated directly with our CI/CD pipelines. This system will:
-
-Capture and analyze data immediately as events occur within the CI/CD process.
-Provide live dashboards and notifications for immediate issue identification and intervention.
-Support advanced analytics to detect trends and predict potential issues before they manifest, using historical and real-time data.
-
-
-
-
-In today’s diverse work environments, both remote and office-based employees face the challenge of maintaining sustained focus and productivity over long periods, which can lead to burnout, physical discomfort, and diminished well-being. Traditional work routines often neglect the necessity of regular, meaningful breaks, leading to a workday marked by prolonged sedentariness and cognitive fatigue. This oversight can reduce job satisfaction and overall productivity, underscoring the need for a structured yet flexible approach to integrating work with wellness and engagement.
-
-ZenBeat is where the classic Pomodoro technique meets the fun and quick vibe of TikTok videos, transforming how we think about work breaks. For those new to it, the Pomodoro technique is a time management method that breaks down work into intervals, traditionally 25 minutes in length, separated by short breaks. It's all about working with the time you have, rather than against it, encouraging focused sprints of work followed by a refreshing pause.
-
-ZenBeat brings this concept to life with a twist. It offers a collection of short, engaging videos—think desk yoga, quick mindfulness exercises, lively dance breaks, and creative physical activities. These videos are specifically designed to slot into the Pomodoro breaks, ensuring you can easily fit a quick, energizing moment into your routine without needing any special gear or prep.
-
-The idea here is simple yet powerful: make taking breaks not just a necessary part of your day but a fun one too. With ZenBeat, breaks become something to look forward to—a quick dose of entertainment and wellness, neatly packaged into your workday. It's a modern way to boost productivity and keep your energy levels high, whether you’re at the office or working from your living room.
-
-
-
-Integrated Development Environment (IDE) Support:
-
-As a developer, I want guidance on setting up my IDE with:
-Recommended plugins/extensions to enhance my development workflow.
-Configuration files to ensure a consistent environment across the team.
-Tool Discovery and Management:
-
-As a developer, I want to discover tools and services that can help me with:
-General development tasks (e.g., Git, Docker) for efficiency.
-Specific needs for our tech stack to leverage the best tools available.
-Code Repository Access and Management:
-
-As a developer, I want to easily access code repositories and understand:
-Branching strategies to collaborate effectively with my team.
-Commit message conventions to maintain a clear project history.
-Integration with code review tools to ensure quality code is being merged.
-Continuous Integration/Continuous Deployment (CI/CD) Integration:
-
-As a developer, I want to interact with CI/CD pipelines to:
-Set up new projects quickly.
-Understand pipeline results for faster troubleshooting.
-Improve the reliability of our deployments.
-Issue Tracking and Project Management Tools:
-
-As a developer, I want to efficiently manage tasks and track issues by:
-Reporting bugs to maintain software quality.
-Requesting features to enhance our products.
-Managing tasks to meet project deadlines.
-Forums, Q&A Sections, and Internal Blogging:
-
-As a developer, I want to participate in a community where I can:
-Share knowledge and learn from my peers.
-Ask questions to resolve blockers quickly.
-Read and write articles about solutions and challenges.
-Learning and Development Resources:
-
-As a developer, I want to access learning resources to:
-Find onboarding materials for a smooth start.
-Explore advanced topics for continuous learning and growth.
-Feedback Loop and Improvement Suggestions:
-
-As a developer, I want to provide feedback on the portal to:
-Report issues for a smoother experience.
-Suggest improvements to meet our evolving needs.
-Request new features to enhance our productivity.
-
-import os
-import subprocess
-import tempfile
-import shutil
-
-# Path to the directory you want to scan
-directory_to_scan = "/path/to/your/directory"
-
-# Iterate over files in the directory
-for filename in os.listdir(directory_to_scan):
-    if filename.endswith(".msi"):
-        # Create a temporary directory for extraction
-        with tempfile.TemporaryDirectory() as temp_dir:
-            msi_path = os.path.join(directory_to_scan, filename)
-
-            # Extract the MSI file using LessMSI or another extraction tool
-            # Ensure LessMSI or the equivalent is accessible from the command line
-            subprocess.run(["lessmsi", "x", msi_path, temp_dir], check=True)
-
-            # Scan the extracted files with the Binary App Scanner
-            # Replace 'binary_app_scanner_command' with the actual command for your scanner
-            subprocess.run(["binary_app_scanner_command", temp_dir], check=True)
-
-            # Temporary directory and its contents are automatically cleaned up
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Price Tag with Vertical Lines</title>
-<style>
-  .price-tag {
-    position: relative;
-    border: 2px solid #000;
-    width: 150px; /* Adjust width as necessary */
-    height: 75px; /* Adjust height as necessary */
-    background-color: #FFFFE0; /* Light yellow background */
-    text-align: center;
-    font-family: Arial, sans-serif;
-    box-sizing: border-box;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-
-  .price-tag::before,
-  .price-tag::after {
-    content: '';
-    position: absolute;
-    top: 10px; /* Space from top, adjust as necessary */
-    bottom: 10px; /* Space from bottom, adjust as necessary */
-    width: 2px; /* Line thickness */
-    background: #000; /* Line color */
-  }
-
-  .price-tag::before {
-    left: 10px; /* Position from the left */
-  }
-
-  .price-tag::after {
-    right: 10px; /* Position from the right */
-  }
-
-  .price {
-    font-size: 24px; /* Adjust as necessary */
-    font-weight: bold;
-    padding: 0 20px; /* Adjust as necessary */
-  }
-</style>
-</head>
-<body>
-
-<div class="price-tag">
-  <div class="price">$404.8</div>
-</div>
-
-</body>
-</html>
-
-
-
-import redis
 import time
-import json
+import schedule
+from flask import Flask
+from threading import Thread
+from exchangelib import Credentials, Account, DELEGATE
+from jira import JIRA
+import logging
+from email_utils import save_email_as_html
+from config import (
+    EMAIL_USERNAME, EMAIL_PASSWORD, EMAIL_ACCOUNT,
+    JIRA_URL, JIRA_USERNAME, JIRA_API_TOKEN,
+    HEARTBEAT_PORT
+)
 
-# Connect to your Redis node
-redis_host = "localhost"  # Change this to your Redis node's IP or hostname
-redis_port = 6379  # Adjust if your Redis server uses a different port
-r = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-def create_bulk_json(index):
-    """Generates a bulky JSON object."""
-    return json.dumps({
-        "user_id": index,
-        "username": f"user_{index}",
-        "email": f"user_{index}@example.com",
-        "profile": {
-            "age": 30,
-            "gender": "unknown",
-            "interests": ["coding", "technology", "gaming", "reading"],
-            "bio": "A passionate individual who loves to explore new technologies and share knowledge with the community."
-        },
-        "login_history": [time.time() - i*3600 for i in range(10)]  # Dummy login times
-    })
+# Set up Flask for heartbeat
+app = Flask(__name__)
 
-def load_test_redis(total_operations=1000):
-    write_times = []
+# Global variable to track the last successful run
+last_run_time = None
 
-    for i in range(total_operations):
-        # Create a bulkier JSON string for each operation
-        json_value = create_bulk_json(i)
+def connect_to_exchange():
+    # ... (same as before)
 
-        start_time = time.time()
-        # Writing the bulkier JSON string to Redis
-        r.set(f"user:{i}", json_value)
-        end_time = time.time()
+def connect_to_jira():
+    # ... (same as before)
 
-        # Calculating the time taken for the write operation
-        operation_time = end_time - start_time
-        write_times.append(operation_time)
+def process_email(email, jira):
+    # ... (same as before)
 
-        if i % 100 == 0:  # Just to keep track of progress without flooding the console
-            print(f"Completed {i} operations")
+def check_mailbox():
+    global last_run_time
+    exchange_account = connect_to_exchange()
+    jira = connect_to_jira()
 
-    # Calculating performance metrics
-    avg_time = sum(write_times) / len(write_times)
-    max_time = max(write_times)
-    min_time = min(write_times)
+    if not exchange_account or not jira:
+        logger.error("Failed to connect to Exchange or JIRA.")
+        return
 
-    print(f"Average write time: {avg_time} seconds")
-    print(f"Maximum write time: {max_time} seconds")
-    print(f"Minimum write time: {min_time} seconds")
+    try:
+        for message in exchange_account.inbox.filter(is_read=False):
+            process_email(message, jira)
+            message.is_read = True
+            message.save()
 
-# Let’s get the test rolling
-load_test_redis()
+        last_run_time = time.time()
+        logger.info("Mailbox check completed successfully.")
+    except Exception as e:
+        logger.error(f"An error occurred while checking mailbox: {str(e)}")
+
+def schedule_tasks():
+    schedule.every(10).minutes.do(check_mailbox)
+
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+
+@app.route('/heartbeat')
+def heartbeat():
+    if last_run_time is None:
+        return "JIRABot hasn't completed a run yet", 503
+
+    if time.time() - last_run_time > 600:  # 10 minutes
+        return "JIRABot may be having issues", 503
+
+    return "JIRABot is up and running", 200
+
+def run_flask_app():
+    app.run(host='0.0.0.0', port=HEARTBEAT_PORT)
+
+if __name__ == "__main__":
+    # Start the Flask app in a separate thread
+    flask_thread = Thread(target=run_flask_app)
+    flask_thread.start()
+
+    # Run the scheduled tasks
+    schedule_tasks()
 
 
+import re
 
-https://www.elastic.co/guide/en/observability/current/ci-cd-observability.html
-
-https://github.com/open-telemetry/oteps/pull/223
-
-
-
-items.find({
-    "repo": "my-example-repo",
-    "created": {
-        "$gte": "2024-02-24T00:00:00.000Z",
-        "$lte": "2024-02-25T00:00:00.000Z"
-    }
-})
-
-pip install "apache-airflow==YOUR_AIRFLOW_VERSION" --constraint path/to/your/constraints-file.txt
-
-airflow db init
-
-airflow users create \
-    --username admin \
-    --firstname YOUR_FIRST_NAME \
-    --lastname YOUR_LAST_NAME \
-    --role Admin \
-    --email YOUR_EMAIL@example.com
-
-airflow webserver --port 8080
-
-airflow scheduler
-
-from airflow import DAG
-from airflow.operators.python_operator import PythonOperator
-from datetime import datetime, timedelta
-
-def my_first_function():
-    print("Hello from the first function!")
-
-def my_second_function():
-    print("Hello from the second function!")
-
-default_args = {
-    'owner': 'airflow',
-    'depends_on_past': False,
-    'start_date': datetime(2021, 1, 1),
-    'email_on_failure': False,
-    'email_on_retry': False,
-    'retries': 1,
-    'retry_delay': timedelta(minutes=5),
+# Modified CATEGORIES dictionary with regex patterns
+CATEGORIES = {
+    "Node.js": [r'\bnode(?:\.?js)?\b', r'\bnpm\b', r'\byarn\b', r'\bexpress(?:\.js)?\b', r'\breact(?:\.js)?\b', r'\bangular(?:\.js)?\b'],
+    "Java": [r'\bjdk\b', r'\bjava\b', r'\bspring(?:\s*boot)?\b', r'\bmaven\b', r'\bgradle\b', r'\bhibernate\b'],
+    "IDE": [r'\beclipse\b', r'\bintellij\b', r'\bvs\s*code\b', r'\bvisual\s*studio\s*code\b', r'\bnetbeans\b'],
+    "Eclipse Plugins": [r'\beclipse\s*(?:plugin|extension|add-?on)\b'],
+    ".NET": [r'\bdot\s*net\b', r'\.net\b', r'\bc#\b', r'\basp\.net\b', r'\bvisual\s*studio\b'],
+    "Python": [r'\bpython\b', r'\bpip\b', r'\bdjango\b', r'\bflask\b', r'\bpandas\b', r'\bnumpy\b'],
+    "Database": [r'\bsql\b', r'\bmysql\b', r'\bpostgre(?:s|sql)\b', r'\bmongo(?:db)?\b', r'\boracle\b', r'\bnosql\b'],
+    "Version Control": [r'\bgit\b', r'\bsvn\b', r'\bmercurial\b', r'\bgithub\b', r'\bgitlab\b', r'\bbitbucket\b'],
+    "Other": []  # Catch-all category
 }
 
-dag = DAG('simple_dag',
-          default_args=default_args,
-          description='A simple DAG',
-          schedule_interval=timedelta(days=1),
-          )
+def classify_email(email_content):
+    email_content = email_content.lower()
+    classifications = []
 
-t1 = PythonOperator(
-    task_id='first_function',
-    python_callable=my_first_function,
-    dag=dag,
-)
+    for category, patterns in CATEGORIES.items():
+        for pattern in patterns:
+            if re.search(pattern, email_content):
+                classifications.append(category)
+                break  # Move to next category once a match is found
 
-t2 = PythonOperator(
-    task_id='second_function',
-    python_callable=my_second_function,
-    dag=dag,
-)
+    if not classifications:
+        classifications.append("Other")
 
-t1 >> t2
+    return list(set(classifications))  # Remove duplicates
+
+def process_email(email, jira):
+    try:
+        # Save email thread as HTML
+        attachment_path = save_email_as_html(email)
+
+        # Classify the email
+        email_content = email.body + " " + email.subject
+        classifications = classify_email(email_content)
+
+        # Create JIRA issue
+        issue_dict = {
+            'project': {'key': 'YOUR_PROJECT_KEY'},
+            'summary': f"Dev Tools Query: {email.subject}",
+            'description': (
+                f"Sender: {email.sender}\n\n"
+                f"Classifications: {', '.join(classifications)}\n\n"
+                "Please see the attached email thread for details."
+            ),
+            'issuetype': {'name': 'Task'},
+        }
+
+        # Add labels based on classifications
+        issue_dict['labels'] = classifications
+
+        new_issue = jira.create_issue(fields=issue_dict)
+
+        # Attach email thread to JIRA issue
+        with open(attachment_path, 'rb') as attachment:
+            jira.add_attachment(issue=new_issue, attachment=attachment)
+
+        logger.info(f"Created JIRA issue: {new_issue.key} with classifications: {classifications}")
+    except Exception as e:
+        logger.error(f"Failed to process email and create JIRA issue: {str(e)}")
+
+
+def connect_to_exchange():
+    try:
+        credentials = Credentials(EMAIL_USERNAME, EMAIL_PASSWORD)
+        account = Account(EMAIL_ACCOUNT, credentials=credentials, autodiscover=True, access_type=DELEGATE)
+        return account
+    except Exception as e:
+        logger.error(f"Failed to connect to Exchange: {str(e)}")
+        return None
+
+def connect_to_jira():
+    try:
+        jira = JIRA(server=JIRA_URL, basic_auth=(JIRA_USERNAME, JIRA_API_TOKEN))
+        return jira
+    except Exception as e:
+        logger.error(f"Failed to connect to JIRA: {str(e)}")
+        return None
 
 
 
+1. Tool Integration and Management
+Standardization of Tools: Consolidate and standardize tools across different ecosystems to ensure compatibility and reduce complexity.
+Tool Lifecycle Management: Regular updates, upgrades, and retirement of tools based on their performance, security standards, and developer needs.
+2. Security and Compliance
+Proactive Vulnerability Management: Implement continuous monitoring and rapid response systems for vulnerabilities within the toolchain.
+Compliance Audits: Regular checks and balances to ensure all tools and processes meet regulatory and internal security requirements.
+3. Governance and Collaboration
+Ecosystem Governance Structure: Establish and maintain a governance model with clear roles and responsibilities, including ecosystem leads and LOB representatives.
+Collaborative Decision-Making: Foster a culture of inclusive and efficient decision-making processes to guide the evolution of development tools and practices.
+4. Developer Support and Enablement
+Onboarding and Training Programs: Streamlined onboarding processes for new developers and ongoing training programs to enhance skills and familiarity with tools.
+Documentation and Knowledge Sharing: Comprehensive, up-to-date documentation and a platform for sharing best practices and solutions within the developer community.
+5. Innovation and Continuous Improvement
+Feedback Mechanisms: Systems to gather and analyze feedback from developers to continually refine tools and processes.
+R&D for Emerging Technologies: Invest in research and development for integrating emerging technologies and methodologies that can enhance the developer experience.
+6. Performance Monitoring and Optimization
+Performance Benchmarking: Regular assessments of the development environment and tools to ensure they are performing optimally.
+Resource Optimization: Optimize the use of resources to ensure developers have access to necessary hardware and software without waste.
+7. Developer Experience and Culture
+Culture Building: Initiatives to build a culture that values innovation, security, and efficiency.
+Developer Well-being: Programs aimed at improving work-life balance and job satisfaction among developers.
 
 
+1. Governance Structure
+Central Governance Committee: Comprised of senior IT leaders and ecosystem leads, this committee sets overarching policies and standards for the developer ecosystems. It also reviews performance against strategic goals.
+Ecosystem Teams: Each ecosystem (Java, .NET, Python, etc.) has its own team led by an Ecosystem Lead and includes representatives from relevant LOBs. These teams are responsible for the day-to-day management and evolution of their respective ecosystems.
+2. Roles and Responsibilities
+Ecosystem Lead: Oversees the specific ecosystem, implements decisions from the central committee, and coordinates with LOB representatives.
+LOB Representatives: Provide input on their specific needs and challenges, help disseminate and implement ecosystem strategies within their teams.
+Developers: Participate in feedback loops, adhere to established practices, and engage in continuous learning opportunities.
+3. Process Management
+Tool Evaluation and Approval: A standardized process for evaluating, testing, and approving new tools or updates, managed by the ecosystem teams with oversight from the central committee.
+Security and Compliance Checks: Regularly scheduled audits and checks, plus ad-hoc security assessments in response to identified threats or vulnerabilities.
+Feedback Loops: Structured mechanisms for collecting and analyzing feedback from developers, which inform continuous improvement cycles.
+4. Communication and Reporting
+Regular Updates: Scheduled communications from both the central governance committee and ecosystem teams to all stakeholders, providing updates on changes, roadmaps, and performance.
+Incident Reporting: A defined process for reporting and responding to security incidents or major disruptions within the ecosystems.
+5. Training and Support
+Onboarding and Training: Standardized onboarding processes for new developers and ongoing training programs on ecosystem tools, security practices, and coding standards.
+Support Channels: Dedicated support teams for each ecosystem, providing helpdesk services, troubleshooting, and guidance.
+6. Technology and Infrastructure
+Shared Services: Centralized services such as CI/CD pipelines, code repositories, and data storage that are managed centrally but configured to meet the needs of each ecosystem.
+Development and Test Environments: Provision of scalable and secure development and test environments that mirror production settings as closely as possible.
+7. Performance Measurement and Improvement
+Key Performance Indicators (KPIs): Defined for each ecosystem based on efficiency, developer satisfaction, security compliance, and innovation.
+Continuous Improvement Programs: Regular reviews of processes, tools, and practices, aiming for iterative improvements based on KPIs and developer feedback.
 
- propose transitioning our PySpark ETL jobs from VMs to an Airflow-based container solution with serverless PySpark. This move offers improved scalability, cost efficiency, and a more streamlined workflow, positioning us well for future data processing challenges."
 
- flow in this context acts as a powerful orchestrator, managing and scheduling our ETL jobs with greater efficiency and reliability. It provides a user-friendly interface for monitoring workflows, ensuring smoother, more transparent operations.
+Definition of a Developer Ecosystem
+"A developer ecosystem in your organization refers to the comprehensive environment tailored to each technology stack that supports the entire lifecycle of software development. It encompasses the tools, platforms, processes, and practices that enable developers to efficiently develop, test, and prepare applications for deployment. Each ecosystem is tailored to meet the specific needs and nuances of its respective technology stack."
+
+Scope of Work in the Ecosystem (Focusing on the Pre-commit Development Environment)
+The scope of your team's work in each ecosystem primarily focuses on optimizing the pre-commit development phase. This includes:
+
+Tool Provisioning and Integration: Ensuring developers have access to the most effective tools for coding, building, testing, and debugging.
+Environment Configuration: Automating the setup of development environments that mimic production closely to reduce integration issues.
+Code Quality and Security: Integrating tools that automatically enforce coding standards, perform static code analysis, and ensure security compliance.
+Developer Support and Documentation: Providing up-to-date documentation, training, and support to facilitate the efficient use of development tools and practices.
+Key Blocks of Work Within the Ecosystem
+For each major ecosystem (Java, .NET, Python, Mainframe, Scala, Go), the following blocks of work can be defined to enhance the pre-commit development environment:
+
+Toolchain Standardization
+
+Develop and maintain a standardized set of tools (IDEs, compilers, debuggers) for each ecosystem.
+Ensure compatibility and integration between tools to provide a seamless development experience.
+Automated Environment Setup
+
+Implement scripts or use containerization technologies to automate the setup of development environments, ensuring every developer starts with a configuration that adheres to organizational standards.
+Code Quality Control
+
+Integrate static and dynamic analysis tools specific to each language and framework to ensure high code quality and security before commit.
+Establish pre-commit hooks that run tests and quality checks automatically.
+Custom Tool Development
+
+Develop or customize tools and plugins that address the unique challenges of each ecosystem.
+For emerging ecosystems like Scala and Go, focus on creating robust support networks and tool integrations that encourage adoption and innovation.
+Documentation and Learning Resources
+
+Create and maintain comprehensive documentation and tutorials specific to each ecosystem.
+Offer training sessions and workshops to keep skills up-to-date and introduce new tools and features.
+Feedback Mechanisms
+
+Establish clear channels for developers to provide feedback on tools and the development environment.
+Use this feedback to continually refine and improve the ecosystems.
+Security Compliance
+
+Embed security tools within the IDEs and development environments to automatically check for vulnerabilities and compliance issues.
+Performance Optimization
+
+Provide developers with tools to analyze and optimize the performance of their code within their local development environment.
+Integrating Across Ecosystems
+While each ecosystem is distinct, look for opportunities to integrate and share best practices across them. This might involve cross-training developers, creating universal tools that work across multiple ecosystems, or standardizing certain aspects of the development process.
+
+
+Governance Model Structure
+Ecosystem Lead
+
+Role: Acts as the chair of the ecosystem governance team. Responsible for overseeing the strategic direction, integration of new tools, and overall health of the ecosystem.
+Selection: Could be a member of your Developer Experience team or nominated from within a LOB based on expertise and leadership qualities.
+LOB Representatives
+
+Role: Represent the needs, challenges, and feedback of their respective business units. They contribute to decision-making processes and help disseminate information back to their teams.
+Selection: Representatives should be technically proficient with insight into their LOB’s specific needs and challenges related to the ecosystem.
+Core Responsibilities
+
+Tool Evaluation and Integration: Assess and decide on new tools or updates to existing tools. This includes evaluating benefits, potential risks, and compatibility with the current stack.
+Roadmap Development: Define a clear and actionable roadmap for each ecosystem that aligns with the broader organizational goals and technological trends.
+Policy and Standards Setting: Develop and maintain coding standards, security protocols, and best practices tailored to each ecosystem.
+Feedback and Continuous Improvement: Establish mechanisms to collect and act on feedback from developers to continually refine tools, processes, and the overall ecosystem.
+Meeting and Decision-Making
+
+Frequency: Regular meetings should be scheduled—monthly or quarterly—to review the ecosystem's status, discuss proposed changes, and update the roadmap.
+Decision-Making: Employ a consensus-based approach where possible, but also establish a clear process for decision-making when consensus cannot be reached.
+Communication and Transparency
+
+Updates: Regular updates should be provided to all stakeholders, including changes in the toolset, updates to standards, and roadmap progress.
+Open Forums: Host open forums or Q&A sessions where developers can pose questions and provide direct feedback to the ecosystem team.
+Training and Support
+
+Role-Based Training: Ensure that training resources are available for all tools and practices endorsed by the governance team.
+Support Structures: Set up support channels specifically designed to help developers with issues related to the ecosystem tools and practices.
+Benefits of This Model
+Democratization: This model allows for a more democratic approach where input from various LOBs shapes the ecosystem, leading to more tailored and effective solutions.
+Adaptability: By involving representatives who directly work with or manage the ecosystems, the governance model can quickly adapt to new challenges and opportunities.
+Alignment: Ensures that all changes and enhancements are in alignment with business needs and developer preferences, thus enhancing overall productivity and satisfaction.
