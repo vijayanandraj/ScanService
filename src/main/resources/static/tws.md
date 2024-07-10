@@ -75,3 +75,24 @@ This fuzzy matching function would replace or supplement the exact string matchi
 
 By using fuzzywuzzy in this way, we're not changing the overall structure of our classification system. We're simply making the keyword matching step more flexible and robust. This can help catch relevant emails that might have been missed with strict exact matching, potentially improving the accuracy of our classification.
 Would you like me to explain any other aspect of how this fits into our email classification system, or discuss any other potential improvements?
+
+
+issue_dict = {
+'key': issue.key,
+'id': issue.id,
+'summary': issue.fields.summary,
+'description': issue.fields.description,
+'status': issue.fields.status.name,
+'assignee': issue.fields.assignee.displayName if issue.fields.assignee else None,
+'reporter': issue.fields.reporter.displayName if issue.fields.reporter else None,
+'created': issue.fields.created,
+'updated': issue.fields.updated,
+}
+
+# Add all custom fields
+for field in issue.raw['fields']:
+if field.startswith('customfield_'):
+issue_dict[field] = issue.raw['fields'][field]
+
+# Convert the dictionary to JSON
+issue_json = json.dumps(issue_dict, indent=2, default=str)
