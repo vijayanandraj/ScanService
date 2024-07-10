@@ -310,3 +310,12 @@ for field in issue.raw['fields']:
 
 # Convert the dictionary to JSON
 issue_json = json.dumps(issue_dict, indent=2, default=str)
+
+def fetch_custom_field_mapping(jira):
+    fields = jira.fields()
+    return {field['name']: field['id'] for field in fields if field['custom']}
+
+# Initialization
+options = {'server': 'https://your-jira-instance.com'}
+jira = JIRA(options)
+custom_field_mapping = fetch_custom_field_mapping(jira)
