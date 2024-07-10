@@ -289,3 +289,24 @@ Benefits of This Model
 Democratization: This model allows for a more democratic approach where input from various LOBs shapes the ecosystem, leading to more tailored and effective solutions.
 Adaptability: By involving representatives who directly work with or manage the ecosystems, the governance model can quickly adapt to new challenges and opportunities.
 Alignment: Ensures that all changes and enhancements are in alignment with business needs and developer preferences, thus enhancing overall productivity and satisfaction.
+
+
+issue_dict = {
+    'key': issue.key,
+    'id': issue.id,
+    'summary': issue.fields.summary,
+    'description': issue.fields.description,
+    'status': issue.fields.status.name,
+    'assignee': issue.fields.assignee.displayName if issue.fields.assignee else None,
+    'reporter': issue.fields.reporter.displayName if issue.fields.reporter else None,
+    'created': issue.fields.created,
+    'updated': issue.fields.updated,
+}
+
+# Add all custom fields
+for field in issue.raw['fields']:
+    if field.startswith('customfield_'):
+        issue_dict[field] = issue.raw['fields'][field]
+
+# Convert the dictionary to JSON
+issue_json = json.dumps(issue_dict, indent=2, default=str)
