@@ -319,3 +319,5 @@ def fetch_custom_field_mapping(jira):
 options = {'server': 'https://your-jira-instance.com'}
 jira = JIRA(options)
 custom_field_mapping = fetch_custom_field_mapping(jira)
+
+The paper proposes a novel approach to cloud application development by suggesting that applications be written as monolithic units but deployed as distributed systems through the ServiceWeaver runtime. This methodology simplifies development, enhances performance, and reduces operational costs by intelligently automating component deployment and management, challenging traditional microservices architectures.
