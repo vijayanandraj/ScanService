@@ -321,3 +321,26 @@ jira = JIRA(options)
 custom_field_mapping = fetch_custom_field_mapping(jira)
 
 The paper proposes a novel approach to cloud application development by suggesting that applications be written as monolithic units but deployed as distributed systems through the ServiceWeaver runtime. This methodology simplifies development, enhances performance, and reduces operational costs by intelligently automating component deployment and management, challenging traditional microservices architectures.
+
+
+def create_eml_in_memory(email):
+    """
+    Create an .eml file in memory.
+
+    :param email: The email object from exchangelib
+    :return: BytesIO object containing the .eml content
+    """
+    # Convert the email to a message object
+    msg = message_from_bytes(email.mime_content)
+
+    # Create a BytesIO object to hold the .eml content
+    eml_file = io.BytesIO()
+
+    # Write the email content to the BytesIO object
+    gen = BytesGenerator(eml_file)
+    gen.flatten(msg)
+
+    # Seek to the beginning of the BytesIO object
+    eml_file.seek(0)
+
+    return eml_file
