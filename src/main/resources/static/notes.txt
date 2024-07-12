@@ -344,3 +344,64 @@ def create_eml_in_memory(email):
     eml_file.seek(0)
 
     return eml_file
+
+def prepare_issue_fields(config, dynamic_data):
+    """
+    Prepare issue fields from static and dynamic configurations.
+
+    Parameters:
+        config (dict): The configuration dictionary with static and dynamic field mappings.
+        dynamic_data (dict): Dictionary containing dynamic values extracted from an email or other source.
+
+    Returns:
+        dict: A dictionary of prepared issue fields ready to be used in a JIRA issue.
+    """
+    issue_fields = config['static_fields'].copy()  # Start with static fields
+
+    # Replace placeholders with dynamic values
+    for field, placeholder in config['dynamic_fields'].items():
+        if placeholder in dynamic_data:
+            issue_fields[field] = dynamic_data[placeholder]
+        else:
+            print(f"Warning: Placeholder '{placeholder}' not found in dynamic data.")
+
+    return issue_fields
+
+
+def extract_data_from_email(email):
+    """
+    Extracts necessary parts from an email to fill dynamic fields.
+
+    Parameters:
+        email (object): An email object.
+
+    Returns:
+        dict: Extracted data for dynamic fields.
+    """
+    return {
+        'email_subject': email.subject,
+        'email_body': email.body,
+        'custom_data': email.custom_field  # Assume this is some custom data extracted from the email
+    }
+
+
+from jira import JIRA
+
+# Initialize JIRA client
+options = {'server': 'https://your-jira-instance.com'}
+jira = JIRA(options)
+
+# Example email object (assuming you have this from somewhere)
+email = Email(subject="Issue Title", body="Description of the issue", custom_field="Some data")
+
+# Extract dynamic data from the email
+dynamic_data = extract_data_from_email(email)
+
+# Prepare fields for the JIRA issue
+issue_fields = prepare_issue_fields(field_config, dynamic_data)
+
+# Create the issue in JIRA
+issue = jira.create_issue(fields=issue_fields)
+print(f"Issue created: {issue.key}")
+
+
