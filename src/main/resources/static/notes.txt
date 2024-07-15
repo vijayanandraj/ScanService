@@ -542,3 +542,25 @@ def classify_email(email_content):
         classifications.append("Other")
 
     return list(set(classifications))  # Remove duplicates
+
+def replace_keys_nested(source, key_map):
+    """
+    Replace keys in a two-level nested dictionary 'source' using the 'key_map' dictionary.
+
+    :param source: Two-level nested dictionary whose keys need to be checked and possibly replaced.
+    :param key_map: Dictionary that provides new key mappings.
+    :return: A new dictionary with keys replaced at both levels as specified in key_map.
+    """
+    new_dict = {}
+    for section, sub_dict in source.items():
+        # Check if the section key needs to be replaced
+        new_section_key = key_map.get(section, section)
+        new_dict[new_section_key] = {}
+
+        # Process the second level dictionary
+        for key, value in sub_dict.items():
+            # Replace the key if it exists in key_map
+            new_key = key_map.get(key, key)
+            new_dict[new_section_key][new_key] = value
+
+    return new_dict
