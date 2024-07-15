@@ -405,3 +405,45 @@ issue = jira.create_issue(fields=issue_fields)
 print(f"Issue created: {issue.key}")
 
 
+import os
+from email import policy
+from email.parser import BytesParser
+
+def save_email_as_html(email, output_dir='email_attachments'):
+    """
+    Save the email content as an HTML file.
+
+    :param email: The email object from exchangelib
+    :param output_dir: Directory to save the HTML file
+    :return: Path to the saved HTML file
+    """
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Create a unique filename
+    filename = f"{email.subject[:30]}_{email.datetime_received.strftime('%Y%m%d%H%M%S')}.html"
+    filename = "".join(c for c in filename if c.isalnum() or c in (' ', '.', '_')).rstrip()
+    filepath = os.path.join(output_dir, filename)
+
+    # Parse the email content
+    msg = BytesParser(policy=policy.default).parsebytes(email.mime_content)
+
+    # Extract HTML content
+    html_content = ""
+    for part in msg.walk():
+        if part.get_content_type() == "text/html":
+            html_content = part.get_payload(decode=True).decode()
+            break
+
+    # If no HTML content, use plain text
+    if not html_content:
+        for part in msg.walk():
+            if part.get_content_type() == "text/plain":
+                text_content = part.get_payload(decode=True).decode()
+                html_content = f"<pre>{text_content}</pre>"
+                break
+
+    # Save the HTML content
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+
+    return filepath
