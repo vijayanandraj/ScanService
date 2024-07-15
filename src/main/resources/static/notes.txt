@@ -505,3 +505,40 @@ def process_email(email, jira):
         logger.info(f"Created JIRA issue: {new_issue.key}")
     except Exception as e:
         logger.error(f"Failed to process email and create JIRA issue: {str(e)}")
+
+CATEGORIES = {
+    "Node.js": ["nodejs", "node.js", "npm", "yarn", "express", "react", "angular"],
+    "Java": ["jdk", "java", "spring", "maven", "gradle", "hibernate"],
+    "IDE": ["eclipse", "intellij", "vscode", "visual studio code", "netbeans"],
+    "Eclipse Plugins": ["eclipse plugin", "eclipse extension", "eclipse addon"],
+    ".NET": ["dotnet", ".net", "c#", "asp.net", "visual studio"],
+    "Python": ["python", "pip", "django", "flask", "pandas", "numpy"],
+    "Database": ["sql", "mysql", "postgresql", "mongodb", "oracle", "nosql"],
+    "Version Control": ["git", "svn", "mercurial", "github", "gitlab", "bitbucket"],
+}
+
+from fuzzywuzzy import fuzz
+
+# Add this to your existing CATEGORIES dictionary
+CATEGORIES = {
+    "Node.js": ["nodejs", "node.js", "npm", "yarn", "express", "react", "angular"],
+    # ... other categories ...
+}
+
+def fuzzy_match(text, keyword, threshold=80):
+    return fuzz.partial_ratio(text, keyword) >= threshold
+
+def classify_email(email_content):
+    email_content = email_content.lower()
+    classifications = []
+
+    for category, keywords in CATEGORIES.items():
+        for keyword in keywords:
+            if fuzzy_match(email_content, keyword, threshold=85):
+                classifications.append(category)
+                break  # Move to next category once a match is found
+
+    if not classifications:
+        classifications.append("Other")
+
+    return list(set(classifications))  # Remove duplicates
