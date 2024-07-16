@@ -1,566 +1,241 @@
-import time
-import schedule
-from flask import Flask
-from threading import Thread
-from exchangelib import Credentials, Account, DELEGATE
-from jira import JIRA
-import logging
-from email_utils import save_email_as_html
-from config import (
-    EMAIL_USERNAME, EMAIL_PASSWORD, EMAIL_ACCOUNT,
-    JIRA_URL, JIRA_USERNAME, JIRA_API_TOKEN,
-    HEARTBEAT_PORT
-)
-
-# Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-# Set up Flask for heartbeat
-app = Flask(__name__)
-
-# Global variable to track the last successful run
-last_run_time = None
-
-def connect_to_exchange():
-    # ... (same as before)
-
-def connect_to_jira():
-    # ... (same as before)
-
-def process_email(email, jira):
-    # ... (same as before)
-
-def check_mailbox():
-    global last_run_time
-    exchange_account = connect_to_exchange()
-    jira = connect_to_jira()
-
-    if not exchange_account or not jira:
-        logger.error("Failed to connect to Exchange or JIRA.")
-        return
-
-    try:
-        for message in exchange_account.inbox.filter(is_read=False):
-            process_email(message, jira)
-            message.is_read = True
-            message.save()
-
-        last_run_time = time.time()
-        logger.info("Mailbox check completed successfully.")
-    except Exception as e:
-        logger.error(f"An error occurred while checking mailbox: {str(e)}")
-
-def schedule_tasks():
-    schedule.every(10).minutes.do(check_mailbox)
-
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
-
-@app.route('/heartbeat')
-def heartbeat():
-    if last_run_time is None:
-        return "JIRABot hasn't completed a run yet", 503
-
-    if time.time() - last_run_time > 600:  # 10 minutes
-        return "JIRABot may be having issues", 503
-
-    return "JIRABot is up and running", 200
-
-def run_flask_app():
-    app.run(host='0.0.0.0', port=HEARTBEAT_PORT)
-
-if __name__ == "__main__":
-    # Start the Flask app in a separate thread
-    flask_thread = Thread(target=run_flask_app)
-    flask_thread.start()
-
-    # Run the scheduled tasks
-    schedule_tasks()
-
-
-import re
-
-# Modified CATEGORIES dictionary with regex patterns
-CATEGORIES = {
-    "Node.js": [r'\bnode(?:\.?js)?\b', r'\bnpm\b', r'\byarn\b', r'\bexpress(?:\.js)?\b', r'\breact(?:\.js)?\b', r'\bangular(?:\.js)?\b'],
-    "Java": [r'\bjdk\b', r'\bjava\b', r'\bspring(?:\s*boot)?\b', r'\bmaven\b', r'\bgradle\b', r'\bhibernate\b'],
-    "IDE": [r'\beclipse\b', r'\bintellij\b', r'\bvs\s*code\b', r'\bvisual\s*studio\s*code\b', r'\bnetbeans\b'],
-    "Eclipse Plugins": [r'\beclipse\s*(?:plugin|extension|add-?on)\b'],
-    ".NET": [r'\bdot\s*net\b', r'\.net\b', r'\bc#\b', r'\basp\.net\b', r'\bvisual\s*studio\b'],
-    "Python": [r'\bpython\b', r'\bpip\b', r'\bdjango\b', r'\bflask\b', r'\bpandas\b', r'\bnumpy\b'],
-    "Database": [r'\bsql\b', r'\bmysql\b', r'\bpostgre(?:s|sql)\b', r'\bmongo(?:db)?\b', r'\boracle\b', r'\bnosql\b'],
-    "Version Control": [r'\bgit\b', r'\bsvn\b', r'\bmercurial\b', r'\bgithub\b', r'\bgitlab\b', r'\bbitbucket\b'],
-    "Other": []  # Catch-all category
-}
-
-def classify_email(email_content):
-    email_content = email_content.lower()
-    classifications = []
-
-    for category, patterns in CATEGORIES.items():
-        for pattern in patterns:
-            if re.search(pattern, email_content):
-                classifications.append(category)
-                break  # Move to next category once a match is found
-
-    if not classifications:
-        classifications.append("Other")
-
-    return list(set(classifications))  # Remove duplicates
-
-def process_email(email, jira):
-    try:
-        # Save email thread as HTML
-        attachment_path = save_email_as_html(email)
-
-        # Classify the email
-        email_content = email.body + " " + email.subject
-        classifications = classify_email(email_content)
-
-        # Create JIRA issue
-        issue_dict = {
-            'project': {'key': 'YOUR_PROJECT_KEY'},
-            'summary': f"Dev Tools Query: {email.subject}",
-            'description': (
-                f"Sender: {email.sender}\n\n"
-                f"Classifications: {', '.join(classifications)}\n\n"
-                "Please see the attached email thread for details."
-            ),
-            'issuetype': {'name': 'Task'},
-        }
-
-        # Add labels based on classifications
-        issue_dict['labels'] = classifications
-
-        new_issue = jira.create_issue(fields=issue_dict)
-
-        # Attach email thread to JIRA issue
-        with open(attachment_path, 'rb') as attachment:
-            jira.add_attachment(issue=new_issue, attachment=attachment)
-
-        logger.info(f"Created JIRA issue: {new_issue.key} with classifications: {classifications}")
-    except Exception as e:
-        logger.error(f"Failed to process email and create JIRA issue: {str(e)}")
-
-
-def connect_to_exchange():
-    try:
-        credentials = Credentials(EMAIL_USERNAME, EMAIL_PASSWORD)
-        account = Account(EMAIL_ACCOUNT, credentials=credentials, autodiscover=True, access_type=DELEGATE)
-        return account
-    except Exception as e:
-        logger.error(f"Failed to connect to Exchange: {str(e)}")
-        return None
-
-def connect_to_jira():
-    try:
-        jira = JIRA(server=JIRA_URL, basic_auth=(JIRA_USERNAME, JIRA_API_TOKEN))
-        return jira
-    except Exception as e:
-        logger.error(f"Failed to connect to JIRA: {str(e)}")
-        return None
-
-
-
-1. Tool Integration and Management
-Standardization of Tools: Consolidate and standardize tools across different ecosystems to ensure compatibility and reduce complexity.
-Tool Lifecycle Management: Regular updates, upgrades, and retirement of tools based on their performance, security standards, and developer needs.
-2. Security and Compliance
-Proactive Vulnerability Management: Implement continuous monitoring and rapid response systems for vulnerabilities within the toolchain.
-Compliance Audits: Regular checks and balances to ensure all tools and processes meet regulatory and internal security requirements.
-3. Governance and Collaboration
-Ecosystem Governance Structure: Establish and maintain a governance model with clear roles and responsibilities, including ecosystem leads and LOB representatives.
-Collaborative Decision-Making: Foster a culture of inclusive and efficient decision-making processes to guide the evolution of development tools and practices.
-4. Developer Support and Enablement
-Onboarding and Training Programs: Streamlined onboarding processes for new developers and ongoing training programs to enhance skills and familiarity with tools.
-Documentation and Knowledge Sharing: Comprehensive, up-to-date documentation and a platform for sharing best practices and solutions within the developer community.
-5. Innovation and Continuous Improvement
-Feedback Mechanisms: Systems to gather and analyze feedback from developers to continually refine tools and processes.
-R&D for Emerging Technologies: Invest in research and development for integrating emerging technologies and methodologies that can enhance the developer experience.
-6. Performance Monitoring and Optimization
-Performance Benchmarking: Regular assessments of the development environment and tools to ensure they are performing optimally.
-Resource Optimization: Optimize the use of resources to ensure developers have access to necessary hardware and software without waste.
-7. Developer Experience and Culture
-Culture Building: Initiatives to build a culture that values innovation, security, and efficiency.
-Developer Well-being: Programs aimed at improving work-life balance and job satisfaction among developers.
-
-
-1. Governance Structure
-Central Governance Committee: Comprised of senior IT leaders and ecosystem leads, this committee sets overarching policies and standards for the developer ecosystems. It also reviews performance against strategic goals.
-Ecosystem Teams: Each ecosystem (Java, .NET, Python, etc.) has its own team led by an Ecosystem Lead and includes representatives from relevant LOBs. These teams are responsible for the day-to-day management and evolution of their respective ecosystems.
-2. Roles and Responsibilities
-Ecosystem Lead: Oversees the specific ecosystem, implements decisions from the central committee, and coordinates with LOB representatives.
-LOB Representatives: Provide input on their specific needs and challenges, help disseminate and implement ecosystem strategies within their teams.
-Developers: Participate in feedback loops, adhere to established practices, and engage in continuous learning opportunities.
-3. Process Management
-Tool Evaluation and Approval: A standardized process for evaluating, testing, and approving new tools or updates, managed by the ecosystem teams with oversight from the central committee.
-Security and Compliance Checks: Regularly scheduled audits and checks, plus ad-hoc security assessments in response to identified threats or vulnerabilities.
-Feedback Loops: Structured mechanisms for collecting and analyzing feedback from developers, which inform continuous improvement cycles.
-4. Communication and Reporting
-Regular Updates: Scheduled communications from both the central governance committee and ecosystem teams to all stakeholders, providing updates on changes, roadmaps, and performance.
-Incident Reporting: A defined process for reporting and responding to security incidents or major disruptions within the ecosystems.
-5. Training and Support
-Onboarding and Training: Standardized onboarding processes for new developers and ongoing training programs on ecosystem tools, security practices, and coding standards.
-Support Channels: Dedicated support teams for each ecosystem, providing helpdesk services, troubleshooting, and guidance.
-6. Technology and Infrastructure
-Shared Services: Centralized services such as CI/CD pipelines, code repositories, and data storage that are managed centrally but configured to meet the needs of each ecosystem.
-Development and Test Environments: Provision of scalable and secure development and test environments that mirror production settings as closely as possible.
-7. Performance Measurement and Improvement
-Key Performance Indicators (KPIs): Defined for each ecosystem based on efficiency, developer satisfaction, security compliance, and innovation.
-Continuous Improvement Programs: Regular reviews of processes, tools, and practices, aiming for iterative improvements based on KPIs and developer feedback.
-
-
-Definition of a Developer Ecosystem
-"A developer ecosystem in your organization refers to the comprehensive environment tailored to each technology stack that supports the entire lifecycle of software development. It encompasses the tools, platforms, processes, and practices that enable developers to efficiently develop, test, and prepare applications for deployment. Each ecosystem is tailored to meet the specific needs and nuances of its respective technology stack."
-
-Scope of Work in the Ecosystem (Focusing on the Pre-commit Development Environment)
-The scope of your team's work in each ecosystem primarily focuses on optimizing the pre-commit development phase. This includes:
-
-Tool Provisioning and Integration: Ensuring developers have access to the most effective tools for coding, building, testing, and debugging.
-Environment Configuration: Automating the setup of development environments that mimic production closely to reduce integration issues.
-Code Quality and Security: Integrating tools that automatically enforce coding standards, perform static code analysis, and ensure security compliance.
-Developer Support and Documentation: Providing up-to-date documentation, training, and support to facilitate the efficient use of development tools and practices.
-Key Blocks of Work Within the Ecosystem
-For each major ecosystem (Java, .NET, Python, Mainframe, Scala, Go), the following blocks of work can be defined to enhance the pre-commit development environment:
-
-Toolchain Standardization
-
-Develop and maintain a standardized set of tools (IDEs, compilers, debuggers) for each ecosystem.
-Ensure compatibility and integration between tools to provide a seamless development experience.
-Automated Environment Setup
-
-Implement scripts or use containerization technologies to automate the setup of development environments, ensuring every developer starts with a configuration that adheres to organizational standards.
-Code Quality Control
-
-Integrate static and dynamic analysis tools specific to each language and framework to ensure high code quality and security before commit.
-Establish pre-commit hooks that run tests and quality checks automatically.
-Custom Tool Development
-
-Develop or customize tools and plugins that address the unique challenges of each ecosystem.
-For emerging ecosystems like Scala and Go, focus on creating robust support networks and tool integrations that encourage adoption and innovation.
-Documentation and Learning Resources
-
-Create and maintain comprehensive documentation and tutorials specific to each ecosystem.
-Offer training sessions and workshops to keep skills up-to-date and introduce new tools and features.
-Feedback Mechanisms
-
-Establish clear channels for developers to provide feedback on tools and the development environment.
-Use this feedback to continually refine and improve the ecosystems.
-Security Compliance
-
-Embed security tools within the IDEs and development environments to automatically check for vulnerabilities and compliance issues.
-Performance Optimization
-
-Provide developers with tools to analyze and optimize the performance of their code within their local development environment.
-Integrating Across Ecosystems
-While each ecosystem is distinct, look for opportunities to integrate and share best practices across them. This might involve cross-training developers, creating universal tools that work across multiple ecosystems, or standardizing certain aspects of the development process.
-
-
-Governance Model Structure
-Ecosystem Lead
-
-Role: Acts as the chair of the ecosystem governance team. Responsible for overseeing the strategic direction, integration of new tools, and overall health of the ecosystem.
-Selection: Could be a member of your Developer Experience team or nominated from within a LOB based on expertise and leadership qualities.
-LOB Representatives
-
-Role: Represent the needs, challenges, and feedback of their respective business units. They contribute to decision-making processes and help disseminate information back to their teams.
-Selection: Representatives should be technically proficient with insight into their LOB’s specific needs and challenges related to the ecosystem.
-Core Responsibilities
-
-Tool Evaluation and Integration: Assess and decide on new tools or updates to existing tools. This includes evaluating benefits, potential risks, and compatibility with the current stack.
-Roadmap Development: Define a clear and actionable roadmap for each ecosystem that aligns with the broader organizational goals and technological trends.
-Policy and Standards Setting: Develop and maintain coding standards, security protocols, and best practices tailored to each ecosystem.
-Feedback and Continuous Improvement: Establish mechanisms to collect and act on feedback from developers to continually refine tools, processes, and the overall ecosystem.
-Meeting and Decision-Making
-
-Frequency: Regular meetings should be scheduled—monthly or quarterly—to review the ecosystem's status, discuss proposed changes, and update the roadmap.
-Decision-Making: Employ a consensus-based approach where possible, but also establish a clear process for decision-making when consensus cannot be reached.
-Communication and Transparency
-
-Updates: Regular updates should be provided to all stakeholders, including changes in the toolset, updates to standards, and roadmap progress.
-Open Forums: Host open forums or Q&A sessions where developers can pose questions and provide direct feedback to the ecosystem team.
-Training and Support
-
-Role-Based Training: Ensure that training resources are available for all tools and practices endorsed by the governance team.
-Support Structures: Set up support channels specifically designed to help developers with issues related to the ecosystem tools and practices.
-Benefits of This Model
-Democratization: This model allows for a more democratic approach where input from various LOBs shapes the ecosystem, leading to more tailored and effective solutions.
-Adaptability: By involving representatives who directly work with or manage the ecosystems, the governance model can quickly adapt to new challenges and opportunities.
-Alignment: Ensures that all changes and enhancements are in alignment with business needs and developer preferences, thus enhancing overall productivity and satisfaction.
-
-
-issue_dict = {
-    'key': issue.key,
-    'id': issue.id,
-    'summary': issue.fields.summary,
-    'description': issue.fields.description,
-    'status': issue.fields.status.name,
-    'assignee': issue.fields.assignee.displayName if issue.fields.assignee else None,
-    'reporter': issue.fields.reporter.displayName if issue.fields.reporter else None,
-    'created': issue.fields.created,
-    'updated': issue.fields.updated,
-}
-
-# Add all custom fields
-for field in issue.raw['fields']:
-    if field.startswith('customfield_'):
-        issue_dict[field] = issue.raw['fields'][field]
-
-# Convert the dictionary to JSON
-issue_json = json.dumps(issue_dict, indent=2, default=str)
-
-def fetch_custom_field_mapping(jira):
-    fields = jira.fields()
-    return {field['name']: field['id'] for field in fields if field['custom']}
-
-# Initialization
-options = {'server': 'https://your-jira-instance.com'}
-jira = JIRA(options)
-custom_field_mapping = fetch_custom_field_mapping(jira)
-
-The paper proposes a novel approach to cloud application development by suggesting that applications be written as monolithic units but deployed as distributed systems through the ServiceWeaver runtime. This methodology simplifies development, enhances performance, and reduces operational costs by intelligently automating component deployment and management, challenging traditional microservices architectures.
-
-
-def create_eml_in_memory(email):
-    """
-    Create an .eml file in memory.
-
-    :param email: The email object from exchangelib
-    :return: BytesIO object containing the .eml content
-    """
-    # Convert the email to a message object
-    msg = message_from_bytes(email.mime_content)
-
-    # Create a BytesIO object to hold the .eml content
-    eml_file = io.BytesIO()
-
-    # Write the email content to the BytesIO object
-    gen = BytesGenerator(eml_file)
-    gen.flatten(msg)
-
-    # Seek to the beginning of the BytesIO object
-    eml_file.seek(0)
-
-    return eml_file
-
-def prepare_issue_fields(config, dynamic_data):
-    """
-    Prepare issue fields from static and dynamic configurations.
-
-    Parameters:
-        config (dict): The configuration dictionary with static and dynamic field mappings.
-        dynamic_data (dict): Dictionary containing dynamic values extracted from an email or other source.
-
-    Returns:
-        dict: A dictionary of prepared issue fields ready to be used in a JIRA issue.
-    """
-    issue_fields = config['static_fields'].copy()  # Start with static fields
-
-    # Replace placeholders with dynamic values
-    for field, placeholder in config['dynamic_fields'].items():
-        if placeholder in dynamic_data:
-            issue_fields[field] = dynamic_data[placeholder]
-        else:
-            print(f"Warning: Placeholder '{placeholder}' not found in dynamic data.")
-
-    return issue_fields
-
-
-def extract_data_from_email(email):
-    """
-    Extracts necessary parts from an email to fill dynamic fields.
-
-    Parameters:
-        email (object): An email object.
-
-    Returns:
-        dict: Extracted data for dynamic fields.
-    """
-    return {
-        'email_subject': email.subject,
-        'email_body': email.body,
-        'custom_data': email.custom_field  # Assume this is some custom data extracted from the email
-    }
-
-
-from jira import JIRA
-
-# Initialize JIRA client
-options = {'server': 'https://your-jira-instance.com'}
-jira = JIRA(options)
-
-# Example email object (assuming you have this from somewhere)
-email = Email(subject="Issue Title", body="Description of the issue", custom_field="Some data")
-
-# Extract dynamic data from the email
-dynamic_data = extract_data_from_email(email)
-
-# Prepare fields for the JIRA issue
-issue_fields = prepare_issue_fields(field_config, dynamic_data)
-
-# Create the issue in JIRA
-issue = jira.create_issue(fields=issue_fields)
-print(f"Issue created: {issue.key}")
-
-
-import os
-from email import policy
-from email.parser import BytesParser
-
-def save_email_as_html(email, output_dir='email_attachments'):
-    """
-    Save the email content as an HTML file.
-
-    :param email: The email object from exchangelib
-    :param output_dir: Directory to save the HTML file
-    :return: Path to the saved HTML file
-    """
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Create a unique filename
-    filename = f"{email.subject[:30]}_{email.datetime_received.strftime('%Y%m%d%H%M%S')}.html"
-    filename = "".join(c for c in filename if c.isalnum() or c in (' ', '.', '_')).rstrip()
-    filepath = os.path.join(output_dir, filename)
-
-    # Parse the email content
-    msg = BytesParser(policy=policy.default).parsebytes(email.mime_content)
-
-    # Extract HTML content
-    html_content = ""
-    for part in msg.walk():
-        if part.get_content_type() == "text/html":
-            html_content = part.get_payload(decode=True).decode()
-            break
-
-    # If no HTML content, use plain text
-    if not html_content:
-        for part in msg.walk():
-            if part.get_content_type() == "text/plain":
-                text_content = part.get_payload(decode=True).decode()
-                html_content = f"<pre>{text_content}</pre>"
-                break
-
-    # Save the HTML content
-    with open(filepath, 'w', encoding='utf-8') as f:
-        f.write(html_content)
-
-    return filepath
-
-
-import io
-from email import policy
-from email.parser import BytesParser
-
-def create_email_html_in_memory(email):
-    """
-    Create HTML content of the email in memory.
-
-    :param email: The email object from exchangelib
-    :return: BytesIO object containing the HTML content
-    """
-    # Parse the email content
-    msg = BytesParser(policy=policy.default).parsebytes(email.mime_content)
-
-    # Extract HTML content
-    html_content = ""
-    for part in msg.walk():
-        if part.get_content_type() == "text/html":
-            html_content = part.get_payload(decode=True).decode()
-            break
-
-    # If no HTML content, use plain text
-    if not html_content:
-        for part in msg.walk():
-            if part.get_content_type() == "text/plain":
-                text_content = part.get_payload(decode=True).decode()
-                html_content = f"<pre>{text_content}</pre>"
-                break
-
-    # Create a BytesIO object to hold the HTML content
-    html_file = io.BytesIO(html_content.encode('utf-8'))
-
-    return html_file
-
-def process_email(email, jira):
-    try:
-        # Create HTML content in memory
-        html_file = create_email_html_in_memory(email)
-
-        # Create JIRA issue
-        issue_dict = {
-            'project': {'key': 'YOUR_PROJECT_KEY'},
-            'summary': f"Dev Tools Query: {email.subject}",
-            'description': f"Sender: {email.sender}\n\nPlease see the attached email for details.",
-            'issuetype': {'name': 'Task'},
-        }
-        new_issue = jira.create_issue(fields=issue_dict)
-
-        # Attach HTML file to JIRA issue
         filename = f"{email.subject[:30]}_{email.datetime_received.strftime('%Y%m%d%H%M%S')}.html"
         filename = "".join(c for c in filename if c.isalnum() or c in (' ', '.', '_')).rstrip()
         jira.add_attachment(issue=new_issue, attachment=html_file, filename=filename)
 
-        logger.info(f"Created JIRA issue: {new_issue.key}")
-    except Exception as e:
-        logger.error(f"Failed to process email and create JIRA issue: {str(e)}")
 
-CATEGORIES = {
-    "Node.js": ["nodejs", "node.js", "npm", "yarn", "express", "react", "angular"],
-    "Java": ["jdk", "java", "spring", "maven", "gradle", "hibernate"],
-    "IDE": ["eclipse", "intellij", "vscode", "visual studio code", "netbeans"],
-    "Eclipse Plugins": ["eclipse plugin", "eclipse extension", "eclipse addon"],
-    ".NET": ["dotnet", ".net", "c#", "asp.net", "visual studio"],
-    "Python": ["python", "pip", "django", "flask", "pandas", "numpy"],
-    "Database": ["sql", "mysql", "postgresql", "mongodb", "oracle", "nosql"],
-    "Version Control": ["git", "svn", "mercurial", "github", "gitlab", "bitbucket"],
-}
+import sqlite3
+from sqlite3 import Error
 
-from fuzzywuzzy import fuzz
+def create_connection(db_file):
+    """Create a database connection to a SQLite database."""
+    conn = None
+    try:
+        conn = sqlite3.connect(db_file)
+        print(f"SQLite version: {sqlite3.version}")
+    except Error as e:
+        print(e)
+    return conn
 
-# Add this to your existing CATEGORIES dictionary
-CATEGORIES = {
-    "Node.js": ["nodejs", "node.js", "npm", "yarn", "express", "react", "angular"],
-    # ... other categories ...
-}
+def create_table(conn, create_table_sql):
+    """Create a table from the create_table_sql statement."""
+    try:
+        c = conn.cursor()
+        c.execute(create_table_sql)
+    except Error as e:
+        print(e)
 
-def fuzzy_match(text, keyword, threshold=80):
-    return fuzz.partial_ratio(text, keyword) >= threshold
+def main():
+    database = "jira_bot.db"
 
-def classify_email(email_content):
-    email_content = email_content.lower()
-    classifications = []
-
-    for category, keywords in CATEGORIES.items():
-        for keyword in keywords:
-            if fuzzy_match(email_content, keyword, threshold=85):
-                classifications.append(category)
-                break  # Move to next category once a match is found
-
-    if not classifications:
-        classifications.append("Other")
-
-    return list(set(classifications))  # Remove duplicates
-
-def replace_keys_nested(source, key_map):
+    sql_create_events_table = """
+    CREATE TABLE IF NOT EXISTS events (
+        id integer PRIMARY KEY,
+        timestamp text NOT NULL,
+        category text,
+        issue_key text
+    );
     """
-    Replace keys in a two-level nested dictionary 'source' using the 'key_map' dictionary.
 
-    :param source: Two-level nested dictionary whose keys need to be checked and possibly replaced.
-    :param key_map: Dictionary that provides new key mappings.
-    :return: A new dictionary with keys replaced at both levels as specified in key_map.
+    # Create a database connection
+    conn = create_connection(database)
+
+    # Create table
+    if conn:
+        create_table(conn, sql_create_events_table)
+        conn.close()
+    else:
+        print("Error! cannot create the database connection.")
+
+if __name__ == '__main__':
+    main()
+
+
+import datetime
+
+def insert_event(conn, event):
     """
-    new_dict = {}
-    for section, sub_dict in source.items():
-        # Check if the section key needs to be replaced
-        new_section_key = key_map.get(section, section)
-        new_dict[new_section_key] = {}
+    Insert a new event into the events table.
+    :param conn: Connection object
+    :param event: A tuple (timestamp, category, issue_key)
+    """
+    sql = ''' INSERT INTO events(timestamp, category, issue_key)
+              VALUES(?,?,?) '''
+    cur = conn.cursor()
+    cur.execute(sql, event)
+    conn.commit()
+    return cur.lastrowid
 
-        # Process the second level dictionary
-        for key, value in sub_dict.items():
-            # Replace the key if it exists in key_map
-            new_key = key_map.get(key, key)
-            new_dict[new_section_key][new_key] = value
+# Example usage
+conn = create_connection("jira_bot.db")
+event = (datetime.datetime.now().isoformat(), 'Node.js', 'JIRA-123')
+event_id = insert_event(conn, event)
+print(f"Event created with id: {event_id}")
+conn.close()
 
-    return new_dict
+
+def query_events(conn, query):
+    """
+    Query events from the events table.
+    :param conn: Connection object
+    :param query: SQL query string
+    """
+    cur = conn.cursor()
+    cur.execute(query)
+    rows = cur.fetchall()
+    return rows
+
+# Example usage for querying events
+conn = create_connection("jira_bot.db")
+today_query = "SELECT COUNT(*) FROM events WHERE date(timestamp) = date('now');"
+today_count = query_events(conn, today_query)
+print(f"Tickets created today: {today_count[0][0]}")
+
+this_week_query = "SELECT COUNT(*) FROM events WHERE strftime('%W', timestamp) = strftime('%W', 'now');"
+this_week_count = query_events(conn, this_week_query)
+print(f"Tickets created this week: {this_week_count[0][0]}")
+
+this_month_query = "SELECT COUNT(*) FROM events WHERE strftime('%m', timestamp) = strftime('%m', 'now');"
+this_month_count = query_events(conn, this_month_query)
+print(f"Tickets created this month: {this_month_count[0][0]}")
+
+conn.close()
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JIRA Bot Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 40px;
+            color: #333;
+        }
+        h1 {
+            color: #0052cc;
+        }
+        h2 {
+            color: #0366d6;
+        }
+        h3 {
+            color: green;
+        }
+        div {
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        img {
+            width: 100%;
+            max-width: 600px;
+            height: auto;
+        }
+        form {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>JIRA Bot Dashboard</h1>
+    <h3>Status: {{ heartbeat }}</h3>
+    <form method="post">
+        <button type="submit">Run Now</button>
+    </form>
+    <div>
+        <h2>Daily Tickets Created</h2>
+        <img src="{{ daily_img }}" alt="Daily Tickets Graph">
+    </div>
+    <div>
+        <h2>Weekly Tickets Created</h2>
+        <img src="{{ weekly_img }}" alt="Weekly Tickets Graph">
+    </div>
+    <div>
+        <h2>Monthly Tickets Created</h2>
+        <img src="{{ monthly_img }}" alt="Monthly Tickets Graph">
+    </div>
+</body>
+</html>
+
+from flask import Flask, render_template, request, redirect, url_for
+import matplotlib.pyplot as plt
+import sqlite3
+import base64
+import io
+
+app = Flask(__name__)
+
+def get_db_connection():
+    conn = sqlite3.connect('jira_bot.db')
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def query_database(query):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(query)
+    data = cur.fetchall()
+    conn.close()
+    return data
+
+def create_graph(data, title):
+    labels = [x['period'] for x in data]
+    values = [x['count'] for x in data]
+    plt.figure(figsize=(10, 5))
+    plt.bar(labels, values, color='blue')
+    plt.xlabel('Period')
+    plt.ylabel('Number of Tickets')
+    plt.title(title)
+    plt.grid(True)
+    img = io.BytesIO()
+    plt.savefig(img, format='png', bbox_inches='tight')
+    plt.close()
+    img.seek(0)
+    img_base64 = base64.b64encode(img.getvalue()).decode('utf8')
+    return f"data:image/png;base64,{img_base64}"
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    heartbeat = "Active"  # Simple status indicator
+    if request.method == 'POST':
+        # This is where you handle the "Run Now" logic
+        print("Run Now was triggered!")
+        return redirect(url_for('index'))
+
+    # Generate data for all graphs
+    daily_img, weekly_img, monthly_img = generate_all_graphs()
+    return render_template('index.html', daily_img=daily_img, weekly_img=weekly_img, monthly_img=monthly_img, heartbeat=heartbeat)
+
+def generate_all_graphs():
+    daily_query = "SELECT date(timestamp) as period, COUNT(*) as count FROM events GROUP BY date(timestamp) ORDER BY date(timestamp);"
+    daily_data = query_database(daily_query)
+    daily_img = create_graph(daily_data, 'Daily Tickets Created')
+
+    weekly_query = "SELECT strftime('%W', timestamp) as period, COUNT(*) as count FROM events GROUP BY strftime('%W', timestamp) ORDER BY strftime('%W', timestamp);"
+    weekly_data = query_database(weekly_query)
+    weekly_img = create_graph(weekly_data, 'Weekly Tickets Created')
+
+    monthly_query = "SELECT strftime('%m', timestamp) as period, COUNT(*) as count FROM events GROUP BY strftime('%m', timestamp) ORDER BY strftime('%m', timestamp);"
+    monthly_data = query_database(monthly_query)
+    monthly_img = create_graph(monthly_data, 'Monthly Tickets Created')
+
+    return daily_img, weekly_img, monthly_img
+
+if __name__ == '__main__':
+    app.run(debug=True)
