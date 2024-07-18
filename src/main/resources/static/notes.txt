@@ -373,3 +373,30 @@ def display_all_records(db_file):
     for row in cursor.fetchall():
         print("{:<10} {:<20} {:<15} {:<10}".format(row[0], row[1], row[2], row[3]))
 
+from matplotlib.dates import AutoDateLocator, AutoDateFormatter
+import matplotlib.dates as mdates
+
+def create_graph(data, title):
+    labels = [datetime.strptime(x['period'], '%Y-%m-%d') for x in data]  # Ensure labels are datetime objects
+    values = [x['count'] for x in data]
+
+    plt.figure(figsize=(10, 5))
+    plt.bar(labels, values, color='blue')
+    plt.xlabel('Date')
+    plt.ylabel('Number of Tickets')
+    plt.title(title)
+
+    # Set date formatting on x-axis
+    ax = plt.gca()  # Get current axis
+    ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))  # Set major ticks to daily
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.grid(True)
+
+    img = io.BytesIO()
+    plt.savefig(img, format='png', bbox_inches='tight')
+    plt.close()
+    img.seek(0)
+    img_base64 = base64.b64encode(img.getvalue()).decode('utf8')
+    return f"data:image/png;base64,{img_base64}"
