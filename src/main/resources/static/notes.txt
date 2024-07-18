@@ -359,3 +359,17 @@ print("Decrypted value:", decrypt_data(encrypted_data))
 
 
 python encrypt_secrets.py API_KEY=123456789 SECRET_KEY=abcdefg DATABASE_PASSWORD=password123
+
+def display_all_records(db_file):
+    """ Fetch and display all records from the events table """
+    conn = create_connection(db_file)  # Create a database connection
+    cursor = conn.cursor()
+
+    query = "SELECT id, timestamp, category, issue_key FROM events ORDER BY id"
+    cursor.execute(query)
+
+    print("Displaying all records:")
+    print("{:<10} {:<20} {:<15} {:<10}".format("ID", "Timestamp", "Category", "Issue Key"))  # Header
+    for row in cursor.fetchall():
+        print("{:<10} {:<20} {:<15} {:<10}".format(row[0], row[1], row[2], row[3]))
+
