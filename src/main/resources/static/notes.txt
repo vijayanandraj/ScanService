@@ -332,3 +332,30 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+import sqlite3
+from cryptography.fernet import Fernet
+
+def retrieve_key_from_db():
+    """Retrieves the encryption key from the SQLite database."""
+    conn = sqlite3.connect('jira_bot.db')
+    c = conn.cursor()
+    c.execute('SELECT key FROM encryption_keys ORDER BY id DESC LIMIT 1')
+    key = c.fetchone()[0]
+    conn.close()
+    return key.encode()
+
+def decrypt_data(encrypted_data):
+    """Decrypts data using the retrieved key."""
+    key = retrieve_key_from_db()
+    fernet = Fernet(key)
+    decrypted = fernet.decrypt(encrypted_data.encode())
+    return decrypted.decode()
+
+# Example usage:
+encrypted_data = 'your_encrypted_data_here'
+print("Decrypted value:", decrypt_data(encrypted_data))
+
+
+python encrypt_secrets.py API_KEY=123456789 SECRET_KEY=abcdefg DATABASE_PASSWORD=password123
