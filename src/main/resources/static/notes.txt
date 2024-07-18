@@ -239,3 +239,44 @@ def generate_all_graphs():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+
+import sqlite3
+import random
+from datetime import datetime, timedelta
+import json
+
+def create_connection(db_file):
+    """ Create a database connection to the SQLite database specified by db_file """
+    conn = sqlite3.connect(db_file)
+    return conn
+
+def insert_dummy_data(conn, num_records):
+    """ Insert dummy data into the events table """
+    categories = ['Node.js', 'Java', 'IDEs', '.NET', 'Visual Studio', 'Database']
+    cur = conn.cursor()
+
+    base_date = datetime.now()
+    for i in range(num_records):
+        # Generate a random date within the past 30 days
+        days_back = random.randint(0, 30)
+        timestamp = base_date - timedelta(days=days_back)
+
+        # Randomly select 1-3 categories for each entry
+        num_cats = random.randint(1, 3)
+        selected_categories = random.sample(categories, num_cats)
+
+        # Create a unique-ish issue key
+        issue_key = f'ISSUE-{1000 + i}'
+
+        # Insert data into the events table
+        cur.execute("INSERT INTO events (timestamp, categories, issue_key) VALUES (?, ?, ?)",
+                    (timestamp.isoformat(), json.dumps(selected_categories), issue_key))
+
+    conn.commit()
+
+# Usage
+db_path = 'jira_bot.db'  # Your database file path
+conn = create_connection(db_path)
+insert_dummy_data(conn, 30)  # Generate and insert 30+ rows of dummy data
+conn.close()
