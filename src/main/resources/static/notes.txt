@@ -400,3 +400,58 @@ def create_graph(data, title):
     img.seek(0)
     img_base64 = base64.b64encode(img.getvalue()).decode('utf8')
     return f"data:image/png;base64,{img_base64}"
+
+
+import re
+
+# Dictionary defined by users
+CATEGORIES = {
+    "Java": ["jdk", "java", "spring", "maven", "gradle"],
+    "IDE-VSCode": ["vscode", "visual studio code"],
+    "Node.js": ["node.js", "npm", "yarn"],
+    "IDE-Visual Studio": ["visual studio"]
+}
+
+def convert_to_regex_patterns(categories):
+    """Converts a dictionary of tool categories and their keywords to regex patterns."""
+    regex_categories = {}
+    for key, tools in categories.items():
+        regex_list = []
+        for tool in tools:
+            # Split on non-alphanumeric sequences and replace them with optional whitespace or the exact character
+            parts = re.split(r'(\W+)', tool)
+            pattern = r'\b'
+            for part in parts:
+                if part.isalnum():  # it's a word, escape normally
+                    pattern += re.escape(part)
+                else:  # it's non-word characters, replace with optional non-alphanumeric
+                    pattern += r'[\s' + re.escape(part) + r']*'
+            pattern += r'\b'
+            regex_list.append(pattern)
+        regex_categories[key] = regex_list
+    return regex_categories
+
+def find_tools_in_text(text, regex_categories):
+    """Searches for tool mentions in text based on regex patterns."""
+    found_tools = {}
+    for category, patterns in regex_categories.items():
+        for pattern in patterns:
+            if re.search(pattern, text, re.IGNORECASE):
+                if category not in found_tools:
+                    found_tools[category] = []
+                found_tools[category].append(re.search(pattern, text, re.IGNORECASE).group())
+    return found_tools
+
+# Convert categories to regex patterns
+regex_patterns = convert_to_regex_patterns(CATEGORIES)
+
+# Sample text to search
+sample_text = "Hi Team, Am looking for some help in visual studio code, When I run after the recent patch, I am getting this below error. Refer: Screenshot."
+
+# Find tools in the sample text
+found_tools = find_tools_in_text(sample_text, regex_patterns)
+list_of_keys = list(found_tools.keys())
+print(list_of_keys)
+
+print("Found tools in text:")
+print(found_tools)
