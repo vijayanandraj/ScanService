@@ -1,4 +1,29 @@
-        filename = f"{email.subject[:30]}_{email.datetime_received.strftime('%Y%m%d%H%M%S')}.html"
+# JIRA Bot
+
+JIRA Bot is a Python-based automation tool designed to monitor a specific mailbox for developer tool-related queries and automatically create corresponding JIRA tickets. Additionally, JIRA Bot logs events into an embedded SQLite database, which can be visualized using Flask and Matplotlib for detailed reports and analysis.
+
+## Features
+
+- **Email Monitoring**: Continuously monitors a specified mailbox for incoming emails and processes them to create JIRA tickets.
+- **JIRA Ticket Creation**: Automatically creates JIRA tickets based on the content of the received emails.
+- **Event Logging**: Logs events into an SQLite database for further analysis and reporting.
+- **Visualization**: Provides interactive and dynamic visual reports using Flask and Matplotlib, including daily, weekly, and monthly summaries of tickets created.
+
+## Prerequisites
+
+- Python 3.x
+- JIRA instance with API access
+- Mailbox credentials and access
+- SQLite (comes with Python's standard library)
+- Required Python packages: `jira`, `sqlite3`, `matplotlib`, `flask`
+
+## Installation
+
+1. **Clone the Repository**
+
+   ```bash
+   git clone https://github.com/yourusername/jirabot.git
+   cd jirabot        filename = f"{email.subject[:30]}_{email.datetime_received.strftime('%Y%m%d%H%M%S')}.html"
         filename = "".join(c for c in filename if c.isalnum() or c in (' ', '.', '_')).rstrip()
         jira.add_attachment(issue=new_issue, attachment=html_file, filename=filename)
 
@@ -455,3 +480,31 @@ print(list_of_keys)
 
 print("Found tools in text:")
 print(found_tools)
+
+
+# JIRA Bot
+
+JIRA Bot is a Python-based automation tool designed to monitor a specific mailbox for developer tool-related queries and automatically create corresponding JIRA tickets. Additionally, JIRA Bot logs events into an embedded SQLite database, which can be visualized using Flask and Matplotlib for detailed reports and analysis.
+
+## Features
+
+- **Email Monitoring**: Continuously monitors a specified mailbox for incoming emails and processes them to create JIRA tickets.
+- **JIRA Ticket Creation**: Automatically creates JIRA tickets based on the content of the received emails.
+- **Event Logging**: Logs events into an SQLite database for further analysis and reporting.
+- **Visualization**: Provides interactive and dynamic visual reports using Flask and Matplotlib, including daily, weekly, and monthly summaries of tickets created.
+
+## Prerequisites
+
+- Python 3.x
+- JIRA instance with API access
+- Mailbox credentials and access
+- SQLite (comes with Python's standard library)
+- Required Python packages: `jira`, `sqlite3`, `matplotlib`, `flask`
+
+## Installation
+
+1. **Clone the Repository**
+
+   ```bash
+   git clone https://github.com/yourusername/jirabot.git
+   cd jirabot
