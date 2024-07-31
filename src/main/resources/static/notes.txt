@@ -1,3 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JIRA Bot Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 40px;
+            color: #333;
+        }
+        h1 {
+            color: #0052cc;
+        }
+        h2 {
+            color: #0366d6;
+        }
+        h3 {
+            color: green;
+        }
+        .container {
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        form {
+            text-align: center;
+        }
+        .plot-container {
+            margin: 20px 0;
+        }
+    </style>
+    <script src="{{ url_for('static', filename='plotly-latest.min.js') }}"></script>
+    <script>
+        function disableButton(button) {
+            button.disabled = true;
+            button.innerText = 'Processing...';
+            document.getElementById('runNowForm').submit();
+        }
+    </script>
+</head>
+<body>
+    <h1>JIRA Bot Dashboard</h1>
+    <h3>Status: {{ heartbeat }}</h3>
+    <form id="runNowForm" method="post" action="/run_now">
+        <button type="submit" onclick="disableButton(this)">Run Now</button>
+    </form>
+    <div class="container plot-container">
+        <h2>Daily Tickets Created</h2>
+        {{ daily_img|safe }}
+    </div>
+    <div class="container plot-container">
+        <h2>Weekly Tickets Created</h2>
+        {{ weekly_img|safe }}
+    </div>
+    <div class="container plot-container">
+        <h2>Monthly Tickets Created</h2>
+        {{ monthly_img|safe }}
+    </div>
+</body>
+</html>
+
 import threading
 import time
 import schedule
