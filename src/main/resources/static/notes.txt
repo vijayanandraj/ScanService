@@ -1,3 +1,10 @@
+### Abstract
+
+"Rethinking Monolithic Architecture: The Case for Moduliths and a Path to Microservices"
+
+In today's fast-paced development landscape, maintaining monolithic applications can be a daunting task. This presentation explores a pragmatic approach to modernizing legacy monoliths through the adoption of modular monoliths, or "moduliths," and highlights how this serves as a strategic intermediary step towards microservices. Using Spring Modulith and ArchUnit, we will demonstrate how to enforce architectural boundaries and validate design principles, ensuring a robust and maintainable system. By showcasing practical examples and live demos, we'll reveal how transitioning to a modular monolith enhances scalability, maintainability, and developer productivity. Join us to discover how you can transform your monolithic architecture into a more flexible and future-proof solution, paving the way for a seamless migration to microservices when necessary.
+
+
 from flask import Flask, render_template, redirect, url_for, request, Markup
 from flask_apscheduler import APScheduler
 import plotly.graph_objs as go
