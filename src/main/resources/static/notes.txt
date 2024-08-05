@@ -15,3 +15,48 @@ Most of these will be driven by codecarbon - Python Library
 Transforming Monoliths with ArchUnit, Moduliths, and Microservice
 
 As software architectures evolve, ensuring their integrity and maintainability becomes paramount. This presentation introduces a novel approach to modernizing monolithic applications by transitioning to modular monoliths, or "moduliths," and eventually to microservices. Central to this journey is ArchUnit, a powerful tool for validating architectural rules and enforcing modular boundaries. We will demonstrate how ArchUnit can be used to maintain a clean architecture within monoliths, moduliths, and microservices, highlighting its role in automated architecture validation. Through practical examples, learn how to enhance scalability and maintainability in your applications, paving the way for a seamless evolution from monoliths to microservices. Join us to discover how ArchUnit can transform your approach to architectural integrity, ensuring your applications remain robust and adaptable.
+
+
+
+Dear Organizers,
+
+I am excited to submit my presentation idea titled "Transforming Monoliths with ArchUnit, Moduliths, and Microservices" for the upcoming conference. Below is an overview of my proposed talk:
+
+Overview:
+This presentation aims to guide the audience through the transformation journey from traditional monolithic architectures to modular monoliths (moduliths) and, when necessary, to microservices. Using ArchUnit, a novel tool for validating and enforcing architectural rules, the session will demonstrate how to maintain and improve architectural integrity at each stage of this transition.
+
+Key Themes:
+Understanding Monolithic Architecture:
+
+Characteristics and challenges of monolithic applications.
+Introducing ArchUnit:
+
+The role of ArchUnit in validating architecture and enforcing rules.
+Validating Monoliths:
+
+Live demonstration of ArchUnit tests on a monolithic application to highlight architectural issues.
+Transition to Modular Monoliths (Moduliths):
+
+Benefits of modular monoliths.
+Using Spring Modulith to create and manage modular monoliths.
+ArchUnit tests to ensure proper modular boundaries and dependencies.
+Moving to Microservices:
+
+When and why to transition from moduliths to microservices.
+Architectural benefits and challenges of microservices.
+Using ArchUnit to validate microservices architecture.
+Comparative Analysis and Practical Examples:
+
+Comparing monoliths, moduliths, and microservices.
+Real-world case study and lessons learned.
+Audience Takeaways:
+Practical insights into the evolution from monoliths to modular monoliths and microservices.
+Hands-on knowledge of using ArchUnit for architecture validation.
+Best practices for maintaining scalable, maintainable, and robust applications.
+Relevance:
+As organizations strive to modernize their software architectures, this presentation provides a pragmatic approach to handling architectural transitions. The use of ArchUnit as a validation tool is particularly relevant for developers and architects seeking to enforce and maintain architectural integrity in their projects.
+
+Thank you for considering my proposal. I am looking forward to the opportunity to share these insights and practical techniques with the conference attendees.
+
+Best regards,
+Vijay
