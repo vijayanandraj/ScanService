@@ -86,3 +86,28 @@ Thank you for considering my proposal.
 
 Best regards,
 Vijay
+
+
+Dear Organizers,
+
+I'm excited to submit my presentation, "Transforming Monoliths with ArchUnit, Moduliths, and Microservices," for the conference.
+
+Overview:
+This session explores transitioning from monolithic architectures to modular monoliths (moduliths) and microservices, using ArchUnit for architectural validation.
+
+Key Themes:
+Monolithic Architecture: Challenges and characteristics.
+ArchUnit: Role in validating architecture.
+Modular Monoliths: Benefits, Spring Modulith, and ArchUnit tests.
+Microservices: When to transition, benefits, challenges, and validation with ArchUnit.
+Takeaways:
+Understanding architectural evolution.
+Using ArchUnit effectively.
+Best practices for maintainable applications.
+Relevance:
+This presentation is crucial for developers and architects focused on modernizing and maintaining their systems.
+
+Thank you for considering my proposal.
+
+Best regards,
+Vijay
