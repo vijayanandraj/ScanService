@@ -1,4 +1,33 @@
 import time
+from codecarbon import OfflineEmissionsTracker
+
+def compute_intensive_task():
+    # Simulate a compute-intensive task
+    for _ in range(1000000):
+        _ = [i * 2 for i in range(100)]
+
+# Initialize the offline emissions tracker
+tracker = OfflineEmissionsTracker(
+    country_iso_code="USA",  # Replace with your country code
+    region="california",     # Replace with your region, if applicable
+    offline=True
+)
+
+# Start tracking emissions
+tracker.start()
+
+# Run your code
+print("Starting compute-intensive task...")
+compute_intensive_task()
+print("Task completed.")
+
+# Stop tracking emissions and print results
+emissions = tracker.stop()
+print(f"Emissions: {emissions} kg CO2")
+```
+
+
+import time
 from codecarbon import EmissionsTracker
 
 def compute_intensive_task():
