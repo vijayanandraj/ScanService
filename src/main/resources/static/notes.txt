@@ -1,3 +1,26 @@
+import time
+from codecarbon import EmissionsTracker
+
+def compute_intensive_task():
+    # Simulate a compute-intensive task
+    for _ in range(1000000):
+        _ = [i * 2 for i in range(100)]
+
+# Initialize the emissions tracker
+tracker = EmissionsTracker()
+
+# Start tracking emissions
+tracker.start()
+
+# Run your code
+print("Starting compute-intensive task...")
+compute_intensive_task()
+print("Task completed.")
+
+# Stop tracking emissions and print results
+emissions = tracker.stop()
+print(f"Emissions: {emissions} kg CO2")
+
 Energy-Efficient Software Development
 
 
