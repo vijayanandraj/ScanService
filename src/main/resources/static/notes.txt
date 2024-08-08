@@ -1,165 +1,36 @@
-import time
-from codecarbon import OfflineEmissionsTracker
+Objective:
+The Green Computing Hackathon Challenge is designed to spark curiosity and innovation among developers by focusing on energy-efficient programming practices.
+Participants will engage in various coding tasks aimed at optimizing software for reduced energy consumption, all within the confines of BAND laptops.
+This hackathon encourages hands-on learning and application of green computing concepts without requiring additional infrastructure.
 
-def compute_intensive_task():
-    # Simulate a compute-intensive task
-    for _ in range(1000000):
-        _ = [i * 2 for i in range(100)]
+Themes:
 
-# Initialize the offline emissions tracker
-tracker = OfflineEmissionsTracker(
-    country_iso_code="USA",  # Replace with your country code
-    region="california",     # Replace with your region, if applicable
-    offline=True
-)
+Theme 1: Energy Efficiency Comparisons
 
-# Start tracking emissions
-tracker.start()
+Comparing Energy Efficiency: REST vs gRPC
+Develop a comprehensive benchmarking suite to compare the energy efficiency of gRPC-based Protocol Buffers applications with traditional REST/JSON applications. The goal is to quantify the energy savings and performance improvements that can be achieved by using gRPC over REST/JSON for different types of operations and data loads.
 
-# Run your code
-print("Starting compute-intensive task...")
-compute_intensive_task()
-print("Task completed.")
+Comparing Energy Efficiency: Native Compiled vs. VM Compiled vs. Interpreted Languages
+Develop a comprehensive benchmarking suite to compare the energy efficiency of native compiled languages (e.g., Rust, C++), compiled languages running on a virtual machine (e.g., Java, C#), and interpreted languages (e.g., Python, Ruby, etc.). The goal is to measure and analyze the energy consumption, performance, and resource utilization of various computational tasks implemented in these different types of languages.
 
-# Stop tracking emissions and print results
-emissions = tracker.stop()
-print(f"Emissions: {emissions} kg CO2")
-```
+Theme 2: Green Coding Practices
+Guide for Green Coding Practices:
+Develop an interactive guide that educates users on green coding practices. The guide should provide practical tips, real-time feedback, and educational resources to promote energy-efficient coding and software operations.
+
+Theme 3: Code Optimization
+Optimizing Legacy Code for Energy Efficiency:
+Take a piece of legacy code (available in various languages) and optimize it for energy efficiency. Participants should measure the energy consumption before and after optimization and provide detailed reports on their improvements.
 
 
-import time
-from codecarbon import EmissionsTracker
+Theme 4: Algorithm and Data Structure Efficiency
+Energy-Efficient Algorithms
+Implement common algorithms (e.g., sorting, searching, graph traversal) in the most energy-efficient way possible. Compare different implementations to find the most energy-efficient solution.
 
-def compute_intensive_task():
-    # Simulate a compute-intensive task
-    for _ in range(1000000):
-        _ = [i * 2 for i in range(100)]
+Sustainable Data Structures
+Analyze and implement different data structures to determine which are the most energy-efficient for various operations (e.g., insertions, deletions, searches). Provide a comparative study.
 
-# Initialize the emissions tracker
-tracker = EmissionsTracker()
+Goal:
+By the end of the hackathon, participants will have developed a deeper understanding of green computing practices, learned to optimize code for energy efficiency, and created solutions that contribute to a more sustainable future. The focus is on practical, hands-on experience that can be immediately applied to real-world software development scenarios.
 
-# Start tracking emissions
-tracker.start()
-
-# Run your code
-print("Starting compute-intensive task...")
-compute_intensive_task()
-print("Task completed.")
-
-# Stop tracking emissions and print results
-emissions = tracker.stop()
-print(f"Emissions: {emissions} kg CO2")
-
-Energy-Efficient Software Development
-
-
-Migrating Existing APIs to energy efficient APIs
-Develop a migration toolkit to transition JSON/REST and SOAP/XML APIs to gRPC with Protocol Buffers. Create a measurement framework to quantify energy savings in data centers and mobile devices, focusing on reduced data transfer, efficient serialization, and decreased processing overhead."
-
-
-Automated code analysis for energy efficiency
-Develop a SonarQube plugin that performs automated code analysis for energy efficiency. The plugin should identify energy hotspots, suggest optimizations, and provide metrics for energy consumption in CI/CD pipelines."
-
-
-Most of these will be driven by codecarbon - Python Library
-
-
-Transforming Monoliths with ArchUnit, Moduliths, and Microservice
-
-As software architectures evolve, ensuring their integrity and maintainability becomes paramount. This presentation introduces a novel approach to modernizing monolithic applications by transitioning to modular monoliths, or "moduliths," and eventually to microservices. Central to this journey is ArchUnit, a powerful tool for validating architectural rules and enforcing modular boundaries. We will demonstrate how ArchUnit can be used to maintain a clean architecture within monoliths, moduliths, and microservices, highlighting its role in automated architecture validation. Through practical examples, learn how to enhance scalability and maintainability in your applications, paving the way for a seamless evolution from monoliths to microservices. Join us to discover how ArchUnit can transform your approach to architectural integrity, ensuring your applications remain robust and adaptable.
-
-
-
-Dear Organizers,
-
-I am excited to submit my presentation idea titled "Transforming Monoliths with ArchUnit, Moduliths, and Microservices" for the upcoming conference. Below is an overview of my proposed talk:
-
-Overview:
-This presentation aims to guide the audience through the transformation journey from traditional monolithic architectures to modular monoliths (moduliths) and, when necessary, to microservices. Using ArchUnit, a novel tool for validating and enforcing architectural rules, the session will demonstrate how to maintain and improve architectural integrity at each stage of this transition.
-
-Key Themes:
-Understanding Monolithic Architecture:
-
-Characteristics and challenges of monolithic applications.
-Introducing ArchUnit:
-
-The role of ArchUnit in validating architecture and enforcing rules.
-Validating Monoliths:
-
-Live demonstration of ArchUnit tests on a monolithic application to highlight architectural issues.
-Transition to Modular Monoliths (Moduliths):
-
-Benefits of modular monoliths.
-Using Spring Modulith to create and manage modular monoliths.
-ArchUnit tests to ensure proper modular boundaries and dependencies.
-Moving to Microservices:
-
-When and why to transition from moduliths to microservices.
-Architectural benefits and challenges of microservices.
-Using ArchUnit to validate microservices architecture.
-Comparative Analysis and Practical Examples:
-
-Comparing monoliths, moduliths, and microservices.
-Real-world case study and lessons learned.
-Audience Takeaways:
-Practical insights into the evolution from monoliths to modular monoliths and microservices.
-Hands-on knowledge of using ArchUnit for architecture validation.
-Best practices for maintaining scalable, maintainable, and robust applications.
-Relevance:
-As organizations strive to modernize their software architectures, this presentation provides a pragmatic approach to handling architectural transitions. The use of ArchUnit as a validation tool is particularly relevant for developers and architects seeking to enforce and maintain architectural integrity in their projects.
-
-Thank you for considering my proposal. I am looking forward to the opportunity to share these insights and practical techniques with the conference attendees.
-
-Best regards,
-Vijay
-
-Dear Organizers,
-
-I am excited to submit my presentation titled "Transforming Monoliths with ArchUnit, Moduliths, and Microservices" for the upcoming conference.
-
-Overview:
-This presentation explores transforming traditional monolithic architectures into modular monoliths (moduliths) and eventually into microservices. It emphasizes using ArchUnit to validate and enforce architectural rules throughout this transition.
-
-Key Themes:
-Understanding Monolithic Architecture: Characteristics and challenges.
-Introducing ArchUnit: Role in architecture validation.
-Validating Monoliths: Live demo of ArchUnit tests highlighting architectural issues.
-Transition to Modular Monoliths (Moduliths): Benefits, use of Spring Modulith, and ArchUnit tests for modular boundaries.
-Moving to Microservices: When and why to transition, benefits, challenges, and ArchUnit for validation.
-Comparative Analysis and Practical Examples: Comparison of architectures, real-world case study, and lessons learned.
-Audience Takeaways:
-Insights into architectural evolution.
-Practical knowledge of using ArchUnit.
-Best practices for scalable, maintainable applications.
-Relevance:
-This talk addresses the need for modernizing architectures and maintaining integrity with ArchUnit, making it highly relevant for developers and architects.
-
-Thank you for considering my proposal.
-
-Best regards,
-Vijay
-
-
-Dear Organizers,
-
-I'm excited to submit my presentation, "Transforming Monoliths with ArchUnit, Moduliths, and Microservices," for the conference.
-
-Overview:
-This session explores transitioning from monolithic architectures to modular monoliths (moduliths) and microservices, using ArchUnit for architectural validation.
-
-Key Themes:
-Monolithic Architecture: Challenges and characteristics.
-ArchUnit: Role in validating architecture.
-Modular Monoliths: Benefits, Spring Modulith, and ArchUnit tests.
-Microservices: When to transition, benefits, challenges, and validation with ArchUnit.
-Takeaways:
-Understanding architectural evolution.
-Using ArchUnit effectively.
-Best practices for maintainable applications.
-Relevance:
-This presentation is crucial for developers and architects focused on modernizing and maintaining their systems.
-
-Thank you for considering my proposal.
-
-Best regards,
-Vijay
+Impact:
+This hackathon aims to promote environmentally conscious coding practices, reduce the carbon footprint of software applications, and encourage a culture of sustainability within the developer community.
