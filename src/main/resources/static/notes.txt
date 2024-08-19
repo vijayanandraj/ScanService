@@ -1,3 +1,35 @@
+#!/bin/bash
+
+APP_NAME="app.py"
+LOG_DIR="/path/to/your/logs"
+LOG_FILE="$LOG_DIR/app_$(date +%Y%m%d).log"
+
+# Create log directory if it doesn't exist
+mkdir -p "$LOG_DIR"
+
+# Function to get current log file name
+get_log_file() {
+    echo "$LOG_DIR/app_$(date +%Y%m%d).log"
+}
+
+while true
+do
+    # Update log file name
+    LOG_FILE=$(get_log_file)
+
+    if ! pgrep -f "$APP_NAME" > /dev/null
+    then
+        echo "Starting $APP_NAME at $(date)" >> "$LOG_FILE"
+        nohup python "$APP_NAME" >> "$LOG_FILE" 2>&1 &
+    fi
+
+    # Optional: Delete logs older than 7 days
+    find "$LOG_DIR" -name "app_*.log" -type f -mtime +7 -delete
+
+    sleep 60
+done
+
+
 1. Code Carbon Inefficiency Scanner
 
 Problem Statement: Develop a tool that scans existing codebases to identify carbon inefficiencies. This scanner should be capable of analyzing code structure, detecting inefficient algorithms, and flagging practices that lead to excessive energy consumption.
