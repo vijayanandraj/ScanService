@@ -1,3 +1,131 @@
+Want an automated system to monitor and restart our Flask application
+So that the application remains available even after server restarts or unexpected crashes
+
+
+Our MMBot and JiraBot on a development server. Currently, the application is started manually using nohup python server.py.
+However, this approach doesn't ensure the application's continuous availability, especially after server restarts or if the application crashes unexpectedly.
+We need a robust solution that automatically monitors the application's status and restarts it when necessary, while also managing log files efficiently
+
+
+Monitor and Restart:
+Automatically check if the Flask app is running every minute
+Restart the app using nohup if it's not running
+
+
+Log Management:
+Append all outputs to a log file
+Rotate log files daily
+
+
+Persistence:
+The monitoring system starts automatically on server boot
+Continues running until manually stopped
+
+
+Usability:
+Provide simple instructions for setup and use
+Allow easy configuration of app name and log directory
+
+
+Testing:
+Demonstrate successful app restart after a simulated crash
+
+
+Title: Enhance Email-to-HTML Conversion to Include Embedded Images
+
+Description
+As a user, I want the email-to-HTML conversion process to include images embedded within the email so that the resulting
+HTML is a complete and accurate representation of the original email content.
+
+Currently, our tool converts email text to HTML but does not handle images, resulting in missing visual information in the converted files.
+The enhancement will modify our existing script to detect and embed images as data URIs directly in the HTML,
+ensuring that the output is self-contained and visually consistent with the original email.
+
+Acceptance Criteria
+
+Detect and Convert Images:
+The tool should recognize all images attached in the email.
+Each image should be converted into a data URI format.
+
+Embed Images in HTML:
+Images must appear in the HTML as <img> tags at the correct points in the content.
+The HTML should look like the original email, with all text and images in place.
+
+Content Accuracy:
+The converted HTML should maintain the original email's layout and formatting.
+Ensure that no parts of the email, such as text or images, are lost in conversion.
+
+Handle Various Emails:
+The tool should successfully convert emails that have multiple images.
+It should also handle emails without any images, ensuring the text content is still properly converted to HTML.
+
+Testing:
+Ensure the HTML output accurately reflects the content and structure of the original email.
+
+
+Title: Implement Subscription-Based Email Notification System
+
+Description
+As a user, I want the system to notify me immediately when a new email arrives so that I can process emails in real-time, reducing the response time and system load compared to the current long polling method.
+
+Acceptance Criteria
+
+Subscription Setup:
+The system must subscribe to new email notifications.
+New emails should trigger a callback function.
+
+Real-Time Processing:
+The system should process emails within seconds of their arrival.
+Ensure that each new email triggers the designated processing logic without user intervention.
+
+Accuracy:
+All new emails must be detected and processed.
+No emails should be missed or processed more than once.
+
+Testing:
+Testing should confirm that the system handles rapid successive email arrivals.
+
+
+import base64
+from email import policy
+from email.parser import BytesParser
+from io import BytesIO
+
+# Simulating reading an email with images (In real scenario, load from file or other source)
+email_content = b"""Your raw MIME email content here"""
+
+# Parsing the email
+msg = BytesParser(policy=policy.default).parsebytes(email_content)
+
+# Function to handle the conversion of an image to a data URI
+def get_image_data_uri(part):
+    image_content = part.get_payload(decode=True)
+    image_type = part.get_content_subtype()
+    base64_image = base64.b64encode(image_content).decode('utf-8')
+    return f"data:image/{image_type};base64,{base64_image}"
+
+# Function to convert email to HTML with embedded images
+def email_to_html_with_images(msg):
+    html_parts = []
+    for part in msg.walk():
+        content_type = part.get_content_type()
+        if content_type == "text/html":
+            html_parts.append(part.get_payload(decode=True).decode(part.get_content_charset()))
+        elif "image" in content_type:
+            image_data_uri = get_image_data_uri(part)
+            html_parts.append(f'<img src="{image_data_uri}"/>')
+
+    return ''.join(html_parts)
+
+# Convert and store HTML
+html_output = email_to_html_with_images(msg)
+
+# For demonstration, we're using BytesIO as in-memory file
+html_file = BytesIO(html_output.encode('utf-8'))
+html_file.seek(0)  # Rewind to the beginning of the file
+print(html_file.read().decode('utf-8'))  # Print the HTML content for demonstration
+
+
 #!/bin/bash
 
 APP_NAME="app.py"
