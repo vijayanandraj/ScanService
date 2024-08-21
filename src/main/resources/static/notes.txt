@@ -1,3 +1,80 @@
+Monitor and Restart:
+Given the Flask application is not running
+When the monitoring system checks the application status
+Then the system should restart the application using nohup
+Log Management:
+Given the Flask application is running and logging output
+When a new day starts
+Then the system should create a new log file for that day
+Given log files older than 7 days exist
+When the system performs its daily check
+Then it should delete these old log files
+Persistence:
+Given the server has just booted up
+When the operating system has finished loading
+Then the monitoring system should start automatically
+Usability:
+Given a new developer wants to use the monitoring system
+When they read the provided instructions
+Then they should be able to set up and configure the system without additional assistance
+Testing:
+Given the Flask application is running and being monitored
+When the application is manually terminated to simulate a crash
+Then the monitoring system should detect this and restart the application within one minute
+
+Acceptance Criteria in Given-When-Then Format
+Given I am subscribed to the mailbox,
+When a new email arrives,
+Then the system should immediately trigger the callback function.
+
+Given a new email has triggered the callback function,
+When the email is processed,
+Then it should be processed within seconds of its arrival without manual intervention.
+
+Given the email notification system is operational,
+When new emails arrive,
+Then all new emails should be detected and processed accurately, with no emails missed or processed more than once.
+
+Given the system is set up for testing,
+When rapid successive emails are simulated to arrive,
+Then the system should handle them without crashing or missing any emails.
+
+Given typical system usage,
+When the system processes incoming emails,
+Then it should remain stable and perform within the expected parameters.
+
+
+Acceptance Criteria in Given-When-Then Format
+Detect and Convert Images:
+
+Given an email with attached images,
+When the email is processed,
+Then the tool should recognize all images and convert each image into a data URI format.
+Embed Images in HTML:
+
+Given images have been converted to data URIs,
+When the email is converted to HTML,
+Then all images must appear as <img> tags at their correct positions within the content, and the HTML should visually match the original email including all text and images.
+Content Accuracy:
+
+Given an email is being converted to HTML,
+When the conversion process is complete,
+Then the HTML should maintain the original email's layout and formatting without losing any parts of the email such as text or images.
+Handle Various Emails:
+
+Given emails with multiple images,
+When these emails are processed,
+Then the tool should successfully convert all images and the text content.
+And Given emails without any images,
+When these emails are processed,
+Then the tool should ensure the text content is still properly converted to HTML.
+Testing:
+
+Given the system is set for testing,
+When emails are processed through the system,
+Then tests should confirm that images are correctly detected and embedded.
+And the HTML output should accurately reflect the content and structure of the original email.
+
 Want an automated system to monitor and restart our Flask application
 So that the application remains available even after server restarts or unexpected crashes
 
