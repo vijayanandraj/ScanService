@@ -1,3 +1,52 @@
+import base64
+from email import policy
+from email.parser import BytesParser
+from io import BytesIO
+
+# Function to handle the conversion of an image to a data URI
+def get_image_data_uri(part):
+    image_content = part.get_payload(decode=True)
+    image_type = part.get_content_subtype()
+    base64_image = base64.b64encode(image_content).decode('utf-8')
+    return f"data:image/{image_type};base64,{base64_image}"
+
+# Function to convert text/plain to HTML (if needed)
+def convert_plain_text_to_html(plain_text):
+    html_content = "<html><body><pre style='font-family: monospace;'>{}</pre></body></html>"
+    return html_content.format(plain_text)
+
+# Function to convert email to HTML with correctly embedded images
+def email_to_html_with_images_or_text(msg):
+    html_parts = []
+    image_cid_map = {}
+
+    # First pass: Extract images and build a map of cid references to data URIs
+    for part in msg.walk():
+        content_type = part.get_content_type()
+        if "image" in content_type:
+            # Get the content ID (cid) and strip surrounding angle brackets if present
+            cid = part.get("Content-ID")
+            if cid:
+                cid = cid.strip('<>')
+                image_cid_map[cid] = get_image_data_uri(part)
+
+    # Second pass: Build the HTML and replace cid references with the corresponding data URIs
+    for part in msg.walk():
+        content_type = part.get_content_type()
+        if content_type == "text/html":
+            html_content = part.get_payload(decode=True).decode(part.get_content_charset())
+            # Replace all cid references with data URIs
+            for cid, data_uri in image_cid_map.items():
+                html_content = html_content.replace(f'cid:{cid}', data_uri)
+            html_parts.append(html_content)
+
+    return ''.join(html_parts)
+
+# Simulate reading and processing an email (this is where you'd provide the actual email)
+# email_content = b"Your raw MIME email content here"
+# msg = BytesParser(policy=
+
+
 from io import BytesIO
 from email import policy
 from email.parser import BytesParser
