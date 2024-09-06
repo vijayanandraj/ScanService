@@ -1,3 +1,179 @@
+import os
+import xml.etree.ElementTree as ET
+import shutil
+from typing import List, Tuple, Dict
+
+# Mapping of connector namespaces to their corresponding Maven groupId and artifactId
+CONNECTOR_DEPENDENCY_MAP = {
+    'http://www.mulesoft.org/schema/mule/http': ('org.mule.connectors', 'mule-http-connector'),
+    'http://www.mulesoft.org/schema/mule/db': ('org.mule.connectors', 'mule-db-connector'),
+    'http://www.mulesoft.org/schema/mule/file': ('org.mule.connectors', 'mule-file-connector'),
+    'http://www.mulesoft.org/schema/mule/ftp': ('org.mule.connectors', 'mule-ftp-connector'),
+    'http://www.mulesoft.org/schema/mule/jms': ('org.mule.connectors', 'mule-jms-connector'),
+    'http://www.mulesoft.org/schema/mule/vm': ('org.mule.connectors', 'mule-vm-connector'),
+    # Add more mappings as needed
+}
+
+def parse_domain_resources(domain_path: str) -> Tuple[Dict[str, List[ET.Element]], set]:
+    resources = {
+        'connectors': [],
+        'global_configs': [],
+        'error_handlers': [],
+        'security_configs': [],
+        'schedulers': [],
+        'transformers': [],
+        'spring_beans': [],
+        'other': []
+    }
+    used_namespaces = set()
+
+    config_path = os.path.join(domain_path, "src", "main", "mule", "mule-domain-config.xml")
+    tree = ET.parse(config_path)
+    root = tree.getroot()
+
+    # Collect used namespaces
+    for key, value in root.attrib.items():
+        if key.startswith('xmlns:'):
+            used_namespaces.add(value)
+
+    for child in root:
+        if '}' in child.tag:
+            namespace = child.tag.split('}')[0][1:]  # Extract namespace
+            used_namespaces.add(namespace)
+            tag = child.tag.split('}')[1]
+            if any(x in tag for x in ['config', 'configuration']):
+                resources['connectors'].append(child)
+            elif tag == 'global-property':
+                resources['global_configs'].append(child)
+            elif tag == 'error-handler':
+                resources['error_handlers'].append(child)
+            elif 'security' in tag or 'oauth' in tag:
+                resources['security_configs'].append(child)
+            elif 'scheduler' in tag:
+                resources['schedulers'].append(child)
+            elif 'transformer' in tag:
+                resources['transformers'].append(child)
+            elif tag == 'beans':
+                resources['spring_beans'].append(child)
+            else:
+                resources['other'].append(child)
+
+    return resources, used_namespaces
+
+def update_project_config(project_path: str, resources: Dict[str, List[ET.Element]], used_namespaces: set):
+    config_path = os.path.join(project_path, "src", "main", "mule", "mule-config.xml")
+    tree = ET.parse(config_path)
+    root = tree.getroot()
+
+    # Add all resources to the project config
+    for resource_list in resources.values():
+        for resource in resource_list:
+            root.append(resource)
+
+    # Update namespaces
+    for namespace in used_namespaces:
+        for prefix, uri in root.attrib.items():
+            if uri == namespace:
+                break
+        else:
+            # If namespace not found, add it with a generated prefix
+            i = 1
+            while f'xmlns:ns{i}' in root.attrib:
+                i += 1
+            root.set(f'xmlns:ns{i}', namespace)
+
+    tree.write(config_path, encoding="UTF-8", xml_declaration=True)
+
+def update_project_pom(project_path: str, domain_path: str, used_namespaces: set):
+    domain_pom_path = os.path.join(domain_path, "pom.xml")
+    project_pom_path = os.path.join(project_path, "pom.xml")
+
+    domain_tree = ET.parse(domain_pom_path)
+    domain_root = domain_tree.getroot()
+
+    project_tree = ET.parse(project_pom_path)
+    project_root = project_tree.getroot()
+
+    # Transfer dependencies
+    domain_deps = domain_root.find("./{*}dependencies")
+    if domain_deps is not None:
+        project_deps = project_root.find("./{*}dependencies")
+        if project_deps is None:
+            project_deps = ET.SubElement(project_root, "dependencies")
+
+        for dep in domain_deps:
+            if dep.find("./{*}classifier") is None or dep.find("./{*}classifier").text != "mule-domain":
+                project_deps.append(dep)
+
+    # Add connector dependencies based on used namespaces
+    for namespace in used_namespaces:
+        if namespace in CONNECTOR_DEPENDENCY_MAP:
+            group_id, artifact_id = CONNECTOR_DEPENDENCY_MAP[namespace]
+            new_dep = ET.SubElement(project_deps, "dependency")
+            ET.SubElement(new_dep, "groupId").text = group_id
+            ET.SubElement(new_dep, "artifactId").text = artifact_id
+            # You might want to specify a version or use a property for versioning
+            # ET.SubElement(new_dep, "version").text = "${mule.version}"
+
+    # Transfer properties
+    domain_props = domain_root.find("./{*}properties")
+    if domain_props is not None:
+        project_props = project_root.find("./{*}properties")
+        if project_props is None:
+            project_props = ET.SubElement(project_root, "properties")
+
+        for prop in domain_props:
+            if not project_props.find(f".//{prop.tag}"):
+                project_props.append(prop)
+
+    # Remove domain dependency
+    for dep in project_root.findall(".//{*}dependency"):
+        artifact_id = dep.find("./{*}artifactId")
+        classifier = dep.find("./{*}classifier")
+        if (artifact_id is not None and artifact_id.text == "my-domain-project" and
+            classifier is not None and classifier.text == "mule-domain"):
+            project_deps.remove(dep)
+
+    project_tree.write(project_pom_path, encoding="UTF-8", xml_declaration=True)
+
+def migrate_project(domain_path: str, project_path: str):
+    print(f"Migrating project: {os.path.basename(project_path)}")
+
+    # Parse domain resources and collect used namespaces
+    resources, used_namespaces = parse_domain_resources(domain_path)
+
+    # Update project configuration
+    update_project_config(project_path, resources, used_namespaces)
+
+    # Update project pom
+    update_project_pom(project_path, domain_path, used_namespaces)
+
+    # Copy any additional resources
+    domain_resources_path = os.path.join(domain_path, "src", "main", "resources")
+    project_resources_path = os.path.join(project_path, "src", "main", "resources")
+    if os.path.exists(domain_resources_path):
+        for item in os.listdir(domain_resources_path):
+            s = os.path.join(domain_resources_path, item)
+            d = os.path.join(project_resources_path, item)
+            if os.path.isfile(s):
+                shutil.copy2(s, d)
+
+    print(f"Migration completed for project: {os.path.basename(project_path)}")
+
+def main():
+    domain_path = "/path/to/domain/project"
+    projects = [
+        "/path/to/project1",
+        "/path/to/project2",
+        # Add more project paths as needed
+    ]
+
+    for project_path in projects:
+        migrate_project(domain_path, project_path)
+
+if __name__ == "__main__":
+    main()
+
 module.exports = {
   content: [
     "./src/**/*.{js,jsx,ts,tsx}",
