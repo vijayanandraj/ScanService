@@ -1,3 +1,65 @@
+from flask import Flask
+from exchangelib import Credentials, Account, DELEGATE, Message
+from exchangelib.subscription import Subscription
+import threading
+import logging
+
+# Initialize Flask app and logging
+app = Flask(__name__)
+logging.basicConfig(level=logging.INFO)
+
+# Exchange credentials and account setup
+EMAIL = 'youremail@domain.com'
+PASSWORD = 'yourpassword'
+
+credentials = Credentials(EMAIL, PASSWORD)
+subscription_thread = None
+subscription_active = False  # Flag to track subscription state
+
+def process_notification(items):
+    """Callback function to process notifications."""
+    for item in items:
+        if isinstance(item, Message):
+            logging.info(f"New message from {item.sender.email_address}: {item.subject}")
+
+def subscribe_to_streaming():
+    """Sets up the streaming subscription."""
+    global subscription_active
+    try:
+        account = Account(EMAIL, credentials=credentials, autodiscover=True, access_type=DELEGATE)
+        folder = account.inbox
+
+        with folder.subscribe_to_streaming(on_notification=process_notification) as subscription:
+            subscription_active = True
+            logging.info("Subscribed to streaming notifications.")
+            subscription.connection.run_forever()
+
+    except Exception as e:
+        logging.error(f"Error in subscription: {e}")
+        subscription_active = False  # Mark subscription as failed
+
+def start_subscription_in_thread():
+    """Starts the subscription in a separate thread."""
+    global subscription_thread
+    subscription_thread = threading.Thread(target=subscribe_to_streaming)
+    subscription_thread.daemon = True  # Daemon thread to stop with Flask app
+    subscription_thread.start()
+    logging.info("Streaming subscription thread started.")
+
+@app.route('/')
+def index():
+    return "Flask App with Streaming Subscription"
+
+@app.before_first_request
+def initialize_subscription():
+    """Starts the streaming subscription when the Flask app is initialized."""
+    logging.info("Initializing streaming subscription.")
+    start_subscription_in_thread()
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
+
 import os
 import xml.etree.ElementTree as ET
 import shutil
