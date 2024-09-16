@@ -50,6 +50,99 @@ sudo systemctl start flask_app
 sudo systemctl enable flask_app
 
 
+# model_downloader.py
+
+import os
+import torch
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+
+def set_proxy():
+    # Set these values according to your proxy configuration
+    proxy = "http://username:password@proxy_ip:proxy_port"
+    os.environ['HTTP_PROXY'] = proxy
+    os.environ['HTTPS_PROXY'] = proxy
+
+def download_model(model_name="facebook/bart-large-cnn"):
+    print("Downloading model...")
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+    print("Model downloaded successfully!")
+
+    # Save the model and tokenizer
+    output_dir = "./bart_large_model"
+    tokenizer.save_pretrained(output_dir)
+    model.save_pretrained(output_dir)
+    print(f"Model and tokenizer saved to {output_dir}")
+
+if __name__ == "__main__":
+    set_proxy()  # Comment this line if you're not using a proxy
+    download_model()
+
+
+# email_summarizer.py
+
+import torch
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from email import policy
+from email.parser import BytesParser
+import os
+
+# Set up device (CPU/GPU)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
+def load_model(model_dir="./bart_large_model"):
+    print("Loading model...")
+    tokenizer = AutoTokenizer.from_pretrained(model_dir)
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_dir).to(device)
+    print("Model loaded successfully!")
+    return tokenizer, model
+
+def extract_email_content(file_path):
+    with open(file_path, 'rb') as fp:
+        msg = BytesParser(policy=policy.default).parse(fp)
+    return msg.get_body(preferencelist=('plain', 'html')).get_content()
+
+def summarize_email(email_content, tokenizer, model, max_length=1024, min_length=40, length_penalty=2.0, num_beams=4, early_stopping=True):
+    inputs = tokenizer("summarize: " + email_content, return_tensors="pt", max_length=max_length, truncation=True)
+    inputs = {k: v.to(device) for k, v in inputs.items()}
+
+    summary_ids = model.generate(
+        inputs["input_ids"],
+        max_length=150,
+        min_length=min_length,
+        length_penalty=length_penalty,
+        num_beams=num_beams,
+        early_stopping=early_stopping
+    )
+
+    summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+    return summary
+
+def main():
+    tokenizer, model = load_model()
+
+    # Example usage
+    email_file_path = "path/to/your/email/file.eml"
+
+    if not os.path.exists(email_file_path):
+        print(f"Error: File not found at {email_file_path}")
+        return
+
+    email_content = extract_email_content(email_file_path)
+    summary = summarize_email(email_content, tokenizer, model)
+
+    print("Original Email Content:")
+    print(email_content[:500] + "..." if len(email_content) > 500 else email_content)
+    print("\nEmail Summary:")
+    print(summary)
+
+if __name__ == "__main__":
+    main()
+
+pip install torch transformers email-parser
+
+python model_downloader.py
 
 
 from flask import Flask
