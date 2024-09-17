@@ -1,3 +1,145 @@
+import pandas as pd
+import os
+import sys
+
+def load_data(file_path):
+    """
+    Load data from CSV or XLSX file based on file extension.
+    """
+    try:
+        if file_path.endswith('.csv'):
+            df = pd.read_csv(file_path)
+        elif file_path.endswith(('.xlsx', '.xls')):
+            df = pd.read_excel(file_path, engine='openpyxl')  # Specify engine if necessary
+        else:
+            raise ValueError("Unsupported file format. Please provide a CSV or XLSX file.")
+        return df
+    except Exception as e:
+        print(f"Error loading file: {e}")
+        sys.exit(1)
+
+def process_timestamps(df):
+    """
+    Convert timestamp columns from Unix epoch to datetime.
+    Handle missing values for Edit_Time and Delete_Time.
+    """
+    # Define timestamp columns and their respective conversions
+    timestamp_columns = {
+        'Update_Time': 'create_at',
+        'Edit_Time': 'edit_at',
+        'Delete_Time': 'delete_at'
+    }
+
+    for original, new in timestamp_columns.items():
+        if original in df.columns:
+            # Convert timestamps; assuming they are in milliseconds
+            df[new] = pd.to_datetime(df[original], unit='ms', errors='coerce')
+        else:
+            print(f"Warning: '{original}' column not found in the data.")
+            df[new] = pd.NaT  # Not a Time for missing columns
+
+    return df
+
+def process_conversations(df):
+    """
+    Identify root messages and replies based on thread information.
+    """
+    # Assuming 'root_id' and 'parent_id' columns exist. Adjust if your columns have different names.
+    # If your thread information is stored differently, modify accordingly.
+
+    # Check if 'root_id' column exists
+    if 'root_id' not in df.columns:
+        print("Error: 'root_id' column not found. Cannot process threaded conversations.")
+        sys.exit(1)
+
+    # Identify root messages (original posts) and replies
+    root_messages = df[df['root_id'].isnull()].copy()
+    replies = df[df['root_id'].notnull()].copy()
+
+    # Merge replies with their root messages
+    conversations = replies.merge(
+        root_messages,
+        left_on='root_id',
+        right_on='id',
+        suffixes=('_reply', '_root'),
+        how='left'
+    )
+
+    # Handle cases where root messages might not be found
+    missing_roots = conversations['message_root'].isnull().sum()
+    if missing_roots > 0:
+        print(f"Warning: {missing_roots} replies have no corresponding root messages.")
+        conversations = conversations[conversations['message_root'].notnull()]
+
+    return root_messages, conversations
+
+def export_conversations(root_messages, conversations):
+    """
+    Export each conversation thread to a separate text file, including edit and delete information.
+    """
+    # Create directory for conversations
+    os.makedirs('conversations', exist_ok=True)
+
+    # Group by root_id and export
+    grouped = conversations.groupby('root_id')
+
+    for root_id, group in grouped:
+        try:
+            root_message = root_messages[root_messages['id'] == root_id].iloc[0]
+            # Define filename, optionally include a portion of the root message for readability
+            safe_root_id = str(root_id).replace('/', '_').replace('\\', '_')
+            filename = f"conversations/{safe_root_id}.txt"
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write(f"--- Conversation Thread ---\n\n")
+                f.write(f"Root Message:\n")
+                f.write(f"Message: {root_message['message']} \n")
+                f.write(f"User: {root_message['user_id']} \n")
+                f.write(f"Created At: {root_message['create_at']} \n")
+
+                # If the root message was edited or deleted
+                if pd.notnull(root_message['edit_at']):
+                    f.write(f"Edited At: {root_message['edit_at']} \n")
+                if pd.notnull(root_message['delete_at']):
+                    f.write(f"Deleted At: {root_message['delete_at']} \n")
+
+                f.write("\nReplies:\n")
+                for _, reply in group.iterrows():
+                    f.write(f"-----------------------------\n")
+                    f.write(f"Reply Message: {reply['message_reply']} \n")
+                    f.write(f"User: {reply['user_id_reply']} \n")
+                    f.write(f"Created At: {reply['create_at_reply']} \n")
+
+                    # Include edit and delete times if available
+                    if pd.notnull(reply['edit_at_reply']):
+                        f.write(f"Edited At: {reply['edit_at_reply']} \n")
+                    if pd.notnull(reply['delete_at_reply']):
+                        f.write(f"Deleted At: {reply['delete_at_reply']} \n")
+                f.write("\n=============================\n\n")
+        except IndexError:
+            print(f"No root message found for root_id: {root_id}")
+
+def main():
+    # Specify your file path here
+    file_path = 'mattermost_export.xlsx'  # Replace with your actual file path
+
+    # Load data
+    df = load_data(file_path)
+
+    # Process timestamps
+    df = process_timestamps(df)
+
+    # Process conversations
+    root_messages, conversations = process_conversations(df)
+
+    # Export conversations
+    export_conversations(root_messages, conversations)
+
+    print("Conversations have been successfully exported to the 'conversations' directory.")
+
+if __name__ == "__main__":
+    main()
+
+
 Title: As a user, I want the EDT Service to be an easily installable package so that I can quickly set up the service without manually installing dependencies.
 
 Given:
