@@ -1,3 +1,58 @@
+Title: As a user, I want the EDT Service to be an easily installable package so that I can quickly set up the service without manually installing dependencies.
+
+Given:
+
+The EDT Service has been refactored into a Flask web application with dashboard, labeling, and scheduling features.
+The service includes multiple dependencies and requires a virtual environment setup for running the application.
+When:
+
+A user wants to install the EDT Service on their machine.
+The user runs pip install edt-service or a similar installation command.
+Then:
+
+The service should install all necessary dependencies automatically as defined in setup.py.
+The installation should create a command-line entry point (e.g., edt-service) for starting the Flask web application.
+The user should be able to run the EDT service without manually setting up the virtual environment or installing dependencies.
+Any required environment configurations should be handled during installation, and the user should be guided through setting up default values (if needed).
+
+Title: As a user, I want the refactored EDT Service to run in the Apps space using a service ID so that it operates in a standardized and secure environment.
+
+Given:
+
+The current EDT Service is running in the user's home space.
+The refactored EDT Service is now a Flask web application with additional features like a dashboard, labeling, and scheduling.
+The target environment for the service is the Apps space, which requires the service to be run with a specific service ID.
+When:
+
+The user or administrator deploys the refactored EDT Service.
+The service is executed with a valid service ID within the Apps space.
+Then:
+
+The service should automatically launch in the designated Apps space, ensuring it is not dependent on the user’s home space.
+The service should use the provided service ID for all necessary operations, such as file permissions, resource allocation, and logging.
+The user should not be required to modify environment configurations manually to migrate from the home space to the Apps space.
+The service should adhere to security and operational policies tied to the Apps space and the service ID, ensuring secure execution and access control.
+
+
+Title: As a user, I want the EDT Service to be managed by SystemD so that it can automatically restart and survive server reboots, ensuring continuous operation.
+
+Given:
+
+The current EDT Service is run using a shell script that automatically restarts if the process is killed.
+The current setup does not survive server reboots, requiring manual intervention to restart the service.
+The refactored EDT Service should run as a Flask web application with features like scheduling, labeling, and a dashboard.
+When:
+
+The system is rebooted, or the EDT Service is manually killed.
+The EDT Service is configured to run as a SystemD service.
+Then:
+
+SystemD should automatically restart the EDT Service upon process failure or server reboot.
+The EDT Service should be set to run as a background service, with systemctl start, stop, status, and restart commands available for manual management.
+The service should have a SystemD unit file configured with options like Restart=always and After=network.target to ensure it starts after system boot and networking is available.
+Logs for the EDT Service should be accessible through journalctl for easy monitoring and troubleshooting.
+The service should remain resilient across server restarts without requiring manual intervention from the user.
+
 from setuptools import setup, find_packages
 
 setup(
