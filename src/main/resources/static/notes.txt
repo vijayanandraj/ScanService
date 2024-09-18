@@ -1,6 +1,210 @@
 import pandas as pd
 import os
 import sys
+import re
+
+def load_data(file_path):
+    """
+    Load data from CSV or XLSX file based on file extension.
+    """
+    try:
+        if file_path.endswith('.csv'):
+            df = pd.read_csv(file_path)
+        elif file_path.endswith(('.xlsx', '.xls')):
+            df = pd.read_excel(file_path, engine='openpyxl')  # Specify engine if necessary
+        else:
+            raise ValueError("Unsupported file format. Please provide a CSV or XLSX file.")
+        return df
+    except Exception as e:
+        print(f"Error loading file: {e}")
+        sys.exit(1)
+
+def process_timestamps(df):
+    """
+    Convert timestamp columns from Unix epoch to datetime.
+    Handle missing values for Edit_Time and Delete_Time.
+    """
+    # Define timestamp columns and their respective conversions
+    timestamp_columns = {
+        'Create_time': 'create_at',
+        'Update_Time': 'update_at',
+        'Edit_Time': 'edit_at',
+        'Delete_Time': 'delete_at'
+    }
+
+    for original, new in timestamp_columns.items():
+        if original in df.columns:
+            # Convert timestamps; assuming they are in milliseconds
+            df[new] = pd.to_datetime(df[original], unit='ms', errors='coerce')
+        else:
+            print(f"Warning: '{original}' column not found in the data.")
+            df[new] = pd.NaT  # Not a Time for missing columns
+
+    return df
+
+def is_user_join_message(message):
+    """
+    Determine if a message indicates a user joining the channel.
+    Adjust the regex pattern based on the exact format of join messages.
+    """
+    # Example pattern: "<<Nickname>> joins the channel"
+    pattern = r'.*joins the channel.*'
+    return bool(re.match(pattern, message))
+
+def filter_join_messages(df):
+    """
+    Remove messages that indicate a user joining the channel.
+    """
+    if 'Message' not in df.columns:
+        print("Error: 'Message' column not found in the data.")
+        sys.exit(1)
+
+    # Apply the filter
+    join_messages = df['Message'].apply(is_user_join_message)
+    filtered_df = df[~join_messages].copy()
+
+    removed_count = join_messages.sum()
+    print(f"Filtered out {removed_count} 'user joins the channel' messages.")
+
+    return filtered_df
+
+def process_conversations(df, unique_id_col='Message_ID'):
+    """
+    Identify root messages and replies based on thread information.
+    """
+    # Check if 'RootID' column exists
+    if 'RootID' not in df.columns:
+        print("Error: 'RootID' column not found. Cannot process threaded conversations.")
+        sys.exit(1)
+
+    # Identify root messages (original posts) and replies
+    root_messages = df[df['RootID'].isnull()].copy()
+    replies = df[df['RootID'].notnull()].copy()
+
+    # Check if unique_id_col exists
+    if unique_id_col not in root_messages.columns:
+        print(f"Error: Unique identifier column '{unique_id_col}' not found in root messages.")
+        sys.exit(1)
+
+    # Merge replies with their root messages
+    conversations = replies.merge(
+        root_messages,
+        left_on='RootID',
+        right_on=unique_id_col,
+        suffixes=('_reply', '_root'),
+        how='left'
+    )
+
+    # Handle cases where root messages might not be found
+    missing_roots = conversations['Message_root'].isnull().sum()
+    if missing_roots > 0:
+        print(f"Warning: {missing_roots} replies have no corresponding root messages. These will be skipped.")
+        conversations = conversations[conversations['Message_root'].notnull()]
+
+    return root_messages, conversations
+
+def export_conversations(root_messages, conversations, unique_id_col='Message_ID', output_file='all_conversations.txt'):
+    """
+    Export all conversation threads into a single text file, separated by indicators.
+    """
+    # Open the output file
+    with open(output_file, 'w', encoding='utf-8') as f:
+        # Group by RootID and iterate through each conversation
+        grouped = conversations.groupby('RootID')
+
+        for root_id, group in grouped:
+            try:
+                # Retrieve root message details
+                root_message = root_messages[root_messages[unique_id_col] == root_id].iloc[0]
+
+                # Use 'Nickname' if available; otherwise, fallback to user ID
+                root_nickname = root_message['Nickname'] if 'Nickname' in root_message and pd.notnull(root_message['Nickname']) else root_message.get('user_id', 'Unknown User')
+
+                # Write conversation indicator
+                f.write(f"--- Conversation Start ---\n\n")
+
+                # Write Root Message
+                f.write(f"Root Message:\n")
+                f.write(f"Message: {root_message['Message']} \n")
+                f.write(f"User: {root_nickname} \n")
+                f.write(f"Created At: {root_message['create_at']} \n")
+
+                # Include Edit and Delete Times if available
+                if pd.notnull(root_message['edit_at']):
+                    f.write(f"Edited At: {root_message['edit_at']} \n")
+                if pd.notnull(root_message['delete_at']):
+                    f.write(f"Deleted At: {root_message['delete_at']} \n")
+
+                f.write("\nReplies:\n")
+
+                # Sort replies by creation time
+                group_sorted = group.sort_values('create_at_reply')
+
+                for _, reply in group_sorted.iterrows():
+                    # Use 'Nickname_reply' if available; otherwise, fallback to user ID
+                    reply_nickname = reply['Nickname_reply'] if 'Nickname_reply' in reply and pd.notnull(reply['Nickname_reply']) else reply.get('user_id_reply', 'Unknown User')
+
+                    f.write(f"-----------------------------\n")
+                    f.write(f"Reply Message: {reply['Message_reply']} \n")
+                    f.write(f"User: {reply_nickname} \n")
+                    f.write(f"Created At: {reply['create_at_reply']} \n")
+
+                    # Include Edit and Delete Times if available
+                    if pd.notnull(reply['edit_at_reply']):
+                        f.write(f"Edited At: {reply['edit_at_reply']} \n")
+                    if pd.notnull(reply['delete_at_reply']):
+                        f.write(f"Deleted At: {reply['delete_at_reply']} \n")
+
+                # Write conversation end indicator
+                f.write(f"\n=============================\n\n")
+
+            except IndexError:
+                print(f"No root message found for RootID: {root_id}")
+
+    print(f"All conversations have been successfully exported to '{output_file}'.")
+
+def main():
+    # =====================
+    # User Configuration
+    # =====================
+
+    # Specify your file path here
+    file_path = 'mattermost_export.xlsx'  # Replace with your actual file path
+
+    # Specify the unique identifier column name
+    unique_id_col = 'Message_ID'  # Replace with your actual unique ID column name, e.g., 'id', 'Post_ID'
+
+    # Specify the output file name
+    output_file = 'all_conversations.txt'  # You can change this as desired
+
+    # =====================
+    # Script Execution
+    # =====================
+
+    # Load data
+    df = load_data(file_path)
+
+    # Process timestamps
+    df = process_timestamps(df)
+
+    # Filter out 'user joins the channel' messages
+    df = filter_join_messages(df)
+
+    # Process conversations
+    root_messages, conversations = process_conversations(df, unique_id_col=unique_id_col)
+
+    # Export conversations to a single file
+    export_conversations(root_messages, conversations, unique_id_col=unique_id_col, output_file=output_file)
+
+    print("Processing complete.")
+
+if __name__ == "__main__":
+    main()
+
+
+import pandas as pd
+import os
+import sys
 
 def load_data(file_path):
     """
