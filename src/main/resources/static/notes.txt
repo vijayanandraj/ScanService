@@ -132,6 +132,42 @@ def main():
 if __name__ == "__main__":
     main()
 
+import pandas as pd
+import random
+
+# Load all questions
+df = pd.read_csv('similar_questions.csv')
+
+# Separate similar and non-similar questions
+similar_df = df[df['label'] == 1]
+all_questions = df['sentence1'].tolist() + df['sentence2'].tolist()
+
+# Generate negative samples by pairing questions from different tools
+negative_samples = []
+tools = ['Jenkins', 'Bitbucket', 'Sonarqube', 'Ansible', 'Confluence', 'Jira']
+
+for _ in range(100):  # Adjust the number as needed
+    q1 = random.choice(all_questions)
+    q2 = random.choice(all_questions)
+
+    # Ensure questions are from different tools
+    if any(tool in q1 for tool in tools) and any(tool in q2 for tool in tools):
+        tool_q1 = next((tool for tool in tools if tool in q1), None)
+        tool_q2 = next((tool for tool in tools if tool in q2), None)
+        if tool_q1 != tool_q2:
+            negative_samples.append({'sentence1': q1, 'sentence2': q2, 'label': 0})
+
+# Create DataFrame for negative samples
+negative_df = pd.DataFrame(negative_samples)
+
+# Combine with similar questions
+final_df = pd.concat([similar_df, negative_df], ignore_index=True)
+
+# Shuffle the dataset
+final_df = final_df.sample(frac=1).reset_index(drop=True)
+
+# Save to CSV
+final_df.to_csv('similar_questions.csv', index=False)
 
 
 import os
