@@ -1,3 +1,64 @@
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+import pandas as pd
+import numpy as np
+
+def load_fine_tuned_model():
+    # Load the fine-tuned SBERT model
+    model = SentenceTransformer('models/fine-tuned-sbert')
+    return model
+
+def generate_embeddings(model, questions):
+    embeddings = model.encode(questions, convert_to_tensor=True)
+    return embeddings.cpu().numpy()
+
+def find_similar_groups(similarity_matrix, threshold=0.8):
+    similar_groups = []
+    visited = set()
+    
+    for i in range(similarity_matrix.shape[0]):
+        if i in visited:
+            continue
+        group = [i]
+        visited.add(i)
+        
+        for j in range(i + 1, similarity_matrix.shape[0]):
+            if similarity_matrix[i, j] > threshold:
+                group.append(j)
+                visited.add(j)
+        
+        similar_groups.append(group)
+    
+    return similar_groups
+
+def main():
+    # Load the fine-tuned model
+    model = load_fine_tuned_model()
+
+    # Load your unanswered questions
+    df_unanswered = pd.read_csv('data/unanswered_questions.csv')  # Update path as needed
+
+    # Generate embeddings
+    embeddings = generate_embeddings(model, df_unanswered['Question'].tolist())
+
+    # Compute cosine similarity matrix
+    similarity_matrix = cosine_similarity(embeddings)
+
+    # Find similar groups based on threshold
+    threshold = 0.8
+    similar_groups = find_similar_groups(similarity_matrix, threshold)
+
+    # Display similar question groups
+    for group in similar_groups:
+        questions_in_group = [df_unanswered.iloc[i]['Question'] for i in group]
+        print("Similar Questions Group:")
+        for question in questions_in_group:
+            print(f"- {question}")
+        print()  # Blank line for better readability
+
+if __name__ == "__main__":
+    main()
+
 sentence1,sentence2,label
 "How do I install Jenkins on Ubuntu?", "What are the steps to set up Jenkins on an Ubuntu server?",1
 "How can I create a new repository in Bitbucket?", "What's the process for initializing a repository on Bitbucket?",1
