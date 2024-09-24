@@ -1,3 +1,19 @@
+from sklearn.decomposition import LatentDirichletAllocation
+from sklearn.feature_extraction.text import CountVectorizer
+
+def extract_keywords_lda(questions):
+    vectorizer = CountVectorizer(stop_words='english')
+    doc_term_matrix = vectorizer.fit_transform(questions)
+
+    lda = LatentDirichletAllocation(n_components=1, random_state=42)
+    lda.fit(doc_term_matrix)
+
+    # Get the words in the topic
+    feature_names = vectorizer.get_feature_names_out()
+    keywords = [feature_names[i] for i in lda.components_[0].argsort()[-3:]]  # Top 3 keywords
+    return " | ".join(keywords)
+
+
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import pandas as pd
