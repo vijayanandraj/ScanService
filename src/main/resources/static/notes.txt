@@ -1,3 +1,22 @@
+def find_similar_groups(similarity_matrix, threshold=0.8):
+    similar_groups = []
+    seen_questions = set()
+
+    for i in range(similarity_matrix.shape[0]):
+        if i not in seen_questions:
+            group = [i]
+            seen_questions.add(i)
+
+            for j in range(i + 1, similarity_matrix.shape[1]):
+                if similarity_matrix[i][j] > threshold:
+                    group.append(j)
+                    seen_questions.add(j)
+
+            similar_groups.append(group)
+
+    return similar_groups
+
+
 from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.feature_extraction.text import CountVectorizer
 
