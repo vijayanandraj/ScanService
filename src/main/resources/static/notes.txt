@@ -1,3 +1,14 @@
+
+
+from transformers import pipeline
+
+def summarize_questions(questions):
+    summarizer = pipeline("summarization")
+    combined_text = " ".join(questions)
+    summary = summarizer(combined_text, max_length=50, min_length=25, do_sample=False)
+    return summary[0]['summary_text']
+
+
 def find_similar_groups(similarity_matrix, threshold=0.8):
     similar_groups = []
     seen_questions = set()
