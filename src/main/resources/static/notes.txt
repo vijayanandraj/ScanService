@@ -1,3 +1,30 @@
+import os
+
+def join_files(part_files_folder, output_file_path, base_filename="model.safetensors"):
+    """
+    Joins split files from a specified folder back into a single file.
+    Args:
+        part_files_folder (str): The path to the folder containing the part files.
+        output_file_path (str): The path to save the joined file.
+        base_filename (str): The base name of the part files (default is "model.safetensors").
+    """
+    part_num = 0
+    with open(output_file_path, 'wb') as output_file:
+        while True:
+            part_file_name = os.path.join(part_files_folder, f"{base_filename}.part{part_num}")
+            if not os.path.exists(part_file_name):
+                break  # Stop when no more part files are found
+            with open(part_file_name, 'rb') as part_file:
+                output_file.write(part_file.read())
+            print(f"Joined {part_file_name}")
+            part_num += 1
+
+    print(f"All parts joined into {output_file_path}")
+
+# Usage example:
+part_files_folder = "path/to/your/part/files/folder"  # Folder where part files are located
+output_file_path = "path/to/output/model_joined.safetensors"  # Path to save the joined file
+join_files(part_files_folder, output_file_path, base_filename="model.safetensors")
 
 
 from transformers import pipeline
