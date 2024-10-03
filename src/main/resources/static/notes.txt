@@ -1,3 +1,45 @@
+from transformers import T5Tokenizer, T5ForConditionalGeneration
+
+# Load the T5-small model and tokenizer
+model_path = 'path/to/your/t5-small'  # Update this with the path to your downloaded model
+tokenizer = T5Tokenizer.from_pretrained(model_path)
+model = T5ForConditionalGeneration.from_pretrained(model_path)
+
+def summarize_questions(questions):
+    # Combine all questions into a single string
+    input_text = " ".join(questions)
+    input_text = "summarize: " + input_text  # Prefix for T5
+
+    # Encode the input text
+    inputs = tokenizer.encode(input_text, return_tensors='pt', max_length=512, truncation=True)
+
+    # Generate summary ids
+    summary_ids = model.generate(inputs, max_length=50, min_length=25, length_penalty=2.0, num_beams=4, early_stopping=True)
+
+    # Decode the summary ids
+    summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+    return summary
+
+def main():
+    # Load your unanswered questions
+    df_unanswered = pd.read_csv('data/unanswered_questions.csv')  # Update path as needed
+
+    # Example list of questions to summarize
+    questions_to_summarize = [
+        "What is the role of a project manager?",
+        "How does a project manager ensure project success?",
+        "What are the key responsibilities of project management?"
+    ]
+
+    # Summarize the questions
+    summary = summarize_questions(questions_to_summarize)
+    print(f"Summary: {summary}")
+
+if __name__ == "__main__":
+    main()
+
+
+
 import os
 
 def join_files(part_files_folder, output_file_path, base_filename="model.safetensors"):
@@ -16,7 +58,7 @@ def join_files(part_files_folder, output_file_path, base_filename="model.safeten
                 break  # Stop when no more part files are found
             with open(part_file_name, 'rb') as part_file:
                 output_file.write(part_file.read())
-            print(f"Joined {part_file_name}")
+            print(f"Joined {part_file_name}")``
             part_num += 1
 
     print(f"All parts joined into {output_file_path}")
