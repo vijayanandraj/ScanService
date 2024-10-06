@@ -731,3 +731,9 @@ Issue Descriptions:
 - SonarQube setup errors","Setup issues related to SonarQube installation and configuration."
 
 ==============================================================================================================
+
+pip install openpyxl
+
+pip install autocorrect
+
+pip install language_tool_python
