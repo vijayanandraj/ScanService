@@ -1,0 +1,733 @@
+# issue_grouping.py - end to end flow
+
+import pandas as pd
+import sqlite3
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.cluster import AgglomerativeClustering
+from transformers import T5Tokenizer, T5ForConditionalGeneration, pipeline
+import language_tool_python
+from autocorrect import Speller
+import os
+
+# Initialize spell checkers
+language_tool = language_tool_python.LanguageTool('en-US')
+spell = Speller(lang='en')
+
+
+def correct_spelling(text):
+    """
+    Correct spelling errors in the given text using LanguageTool and Autocorrect.
+
+    Args:
+        text (str): Text to be corrected.
+
+    Returns:
+        corrected_text (str): Corrected text.
+    """
+    # Correct using LanguageTool
+    matches = language_tool.check(text)
+    corrected_text = language_tool_python.utils.correct(text, matches)
+
+    # Further correct using Autocorrect
+    corrected_text = spell(corrected_text)
+
+    return corrected_text
+
+
+def load_summarizer(model_name='t5-small', model_path="C:/Users/vijay/PycharmProjects/LLMTest/t5-small-1"):
+    """
+    Load the T5 model and tokenizer from Hugging Face or a local directory.
+
+    Args:
+        model_name (str): Name of the Hugging Face model.
+        model_path (str): Path to the local directory containing the model.
+
+    Returns:
+        summarizer (pipeline): Hugging Face summarization pipeline.
+    """
+    if model_path and os.path.exists(model_path):
+        tokenizer = T5Tokenizer.from_pretrained(model_path)
+        model = T5ForConditionalGeneration.from_pretrained(model_path)
+    else:
+        tokenizer = T5Tokenizer.from_pretrained(model_name)
+        model = T5ForConditionalGeneration.from_pretrained(model_name)
+
+    summarizer = pipeline("summarization", model=model, tokenizer=tokenizer)
+    return summarizer
+
+
+def deduplicate_questions(questions):
+    """
+    Remove exact duplicate questions.
+
+    Args:
+        questions (list): List of question strings.
+
+    Returns:
+        unique_questions (list): List of unique question strings.
+    """
+    seen = set()
+    unique_questions = []
+    for q in questions:
+        q_clean = q.lower().strip()
+        if q_clean not in seen:
+            unique_questions.append(q)
+            seen.add(q_clean)
+    return unique_questions
+
+
+def format_questions_for_summarization(questions):
+    """
+    Format the list of questions into a single string with clear separation and instructions.
+
+    Args:
+        questions (list): List of question strings.
+
+    Returns:
+        formatted_text (str): Formatted string for summarization.
+    """
+    # Clear Instruction with Bullet Points
+    formatted_questions = "\n".join([f"- {q}" for q in questions])
+    formatted_text = f"Please provide a concise and descriptive summary for the following questions:\n{formatted_questions}"
+    return formatted_text
+
+
+def summarize_questions(summarizer, questions):
+    """
+    Generate a summary for a list of similar questions.
+
+    Args:
+        summarizer (pipeline): Hugging Face summarization pipeline.
+        questions (list): List of question strings.
+
+    Returns:
+        summary (str): Generated and corrected summary string.
+    """
+    # Deduplicate questions
+    unique_questions = deduplicate_questions(questions)
+
+    # Handle cases where all questions are identical or nearly identical
+    if len(unique_questions) == 1:
+        return unique_questions[0]
+
+    # Format questions
+    input_text = format_questions_for_summarization(unique_questions)
+
+    # Generate summary
+    summary = summarizer(
+        input_text,
+        max_length=100,  # Adjusted for concise summaries
+        min_length=30,  # Adjusted for concise summaries
+        num_beams=4,  # Beam search for better quality
+        early_stopping=True,
+        no_repeat_ngram_size=3,  # Prevent repetition
+        do_sample=False
+    )
+
+    # Extract summary text
+    summary_text = summary[0]['summary_text']
+
+    # Correct spelling
+    corrected_summary = correct_spelling(summary_text)
+
+    return corrected_summary
+
+
+def cluster_issues(embeddings, distance_threshold=1.0):
+    """
+    Cluster issues based on embeddings using Agglomerative Clustering.
+
+    Args:
+        embeddings (ndarray): Array of embeddings.
+        distance_threshold (float): The linkage distance threshold above which clusters will not be merged.
+
+    Returns:
+        cluster_labels (list): List of cluster labels for each issue.
+    """
+    clustering_model = AgglomerativeClustering(
+        n_clusters=None,
+        metric='cosine',
+        linkage='average',
+        distance_threshold=distance_threshold
+    )
+    cluster_labels = clustering_model.fit_predict(embeddings)
+    return cluster_labels
+
+
+# def create_database(db_path='issues.db'):
+#     """
+#     Create SQLite database and necessary tables.
+#
+#     Args:
+#         db_path (str): Path to the SQLite database file.
+#
+#     Returns:
+#         conn (sqlite3.Connection): SQLite connection object.
+#     """
+#     conn = sqlite3.connect(db_path)
+#     cursor = conn.cursor()
+#
+#     # Create Issues table
+#     cursor.execute('''
+#         CREATE TABLE IF NOT EXISTS Issues (
+#             id INTEGER PRIMARY KEY AUTOINCREMENT,
+#             issue_short_description TEXT,
+#             issue_type TEXT,
+#             tool TEXT,
+#             cluster_id INTEGER
+#         )
+#     ''')
+#
+#     # Create Clusters table
+#     cursor.execute('''
+#         CREATE TABLE IF NOT EXISTS Clusters (
+#             cluster_id INTEGER PRIMARY KEY,
+#             summary TEXT
+#         )
+#     ''')
+#
+#     conn.commit()
+#     return conn
+
+
+def create_database(db_path='issues.db'):
+    """
+    Create SQLite database and necessary tables.
+
+    Args:
+        db_path (str): Path to the SQLite database file.
+
+    Returns:
+        conn (sqlite3.Connection): SQLite connection object.
+    """
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # Create Issues table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS Issues (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                issue_short_description TEXT,
+                issue_type TEXT,
+                tool TEXT,
+                cluster_id INTEGER,
+                FOREIGN KEY (cluster_id) REFERENCES Clusters(cluster_id)
+            )
+        ''')
+
+        # Create Clusters table with correct data types
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS Clusters (
+                cluster_id INTEGER PRIMARY KEY,
+                summary TEXT
+            )
+        ''')
+
+        conn.commit()
+        return conn
+    except Exception as e:
+        raise e
+
+
+def insert_data(conn, df, cluster_labels):
+    """
+    Insert issues into the Issues table.
+
+    Args:
+        conn (sqlite3.Connection): SQLite connection object.
+        df (DataFrame): Pandas DataFrame containing the issues.
+        cluster_labels (list): List of cluster labels corresponding to each issue.
+    """
+    cursor = conn.cursor()
+    for idx, row in df.iterrows():
+        cluster_id = int(cluster_labels[idx])
+        cursor.execute('''
+            INSERT INTO Issues (issue_short_description, issue_type, tool, cluster_id)
+            VALUES (?, ?, ?, ?)
+        ''', (
+            row['Issue Short Description'],
+            row['Issue Type'],
+            row['Tool'],
+            cluster_id
+        ))
+    conn.commit()
+
+
+def insert_clusters(conn, cluster_summaries):
+    """
+    Insert cluster summaries into the Clusters table.
+
+    Args:
+        conn (sqlite3.Connection): SQLite connection object.
+        cluster_summaries (dict): Dictionary mapping cluster_id to summary.
+    """
+    cursor = conn.cursor()
+    for cluster_id, summary in cluster_summaries.items():
+        print(f"Cluster ID == {cluster_id} ==> Summary ==> {summary}")
+        cluster_id_int = int(cluster_id)
+        cursor.execute('''
+            INSERT OR REPLACE INTO Clusters (cluster_id, summary)
+            VALUES (?, ?)
+        ''', (
+            cluster_id_int,
+            summary
+        ))
+    conn.commit()
+
+
+def generate_cluster_summaries(summarizer, df, cluster_labels):
+    """
+    Generate summaries for each cluster.
+
+    Args:
+        summarizer (pipeline): Hugging Face summarization pipeline.
+        df (DataFrame): Pandas DataFrame containing the issues.
+        cluster_labels (list): List of cluster labels corresponding to each issue.
+
+    Returns:
+        cluster_summaries (dict): Dictionary mapping cluster_id to summary.
+    """
+    cluster_summaries = {}
+    clusters = {}
+
+    # Organize issues by cluster
+    for idx, label in enumerate(cluster_labels):
+        if label not in clusters:
+            clusters[label] = []
+        clusters[label].append(df.iloc[idx]['Issue Short Description'])
+
+    # Generate summaries for each cluster
+    for cluster_id, issues in clusters.items():
+        summary = summarize_questions(summarizer, issues)
+        cluster_summaries[cluster_id] = summary
+
+    return cluster_summaries
+
+
+def query_top_issues(conn, tool=None, issue_type=None, top_n=10):
+    """
+    Query top N issues based on Tool and/or Issue Type.
+
+    Args:
+        conn (sqlite3.Connection): SQLite connection object.
+        tool (str): Tool name to filter.
+        issue_type (str): Issue Type to filter.
+        top_n (int): Number of top issues to retrieve.
+
+    Returns:
+        results (list of tuples): Retrieved issues.
+    """
+    cursor = conn.cursor()
+    query = '''
+        SELECT Issues.issue_short_description, Issues.issue_type, Issues.tool, Clusters.summary
+        FROM Issues
+        JOIN Clusters ON Issues.cluster_id = Clusters.cluster_id
+    '''
+    conditions = []
+    params = []
+
+
+================================================================================================
+
+import csv
+
+# Define the Tools and Issue Types
+tools = [
+    "XLR",
+    "Jenkins",
+    "Ansible Tower",
+    "RAFT",
+    "Bitbucket",
+    "qTest",
+    "Jira Issues2",
+    "Horizon Insights",
+    "Jira3",
+    "Celestial",
+    "Release Manager",
+    "TOSCA",
+    "Artifactory",
+    "Octane",
+    "MyHorizon",
+    "Datical",
+    "Confluence",
+    "SonarQube",
+    "SOATest",
+    "Litmus Test",
+    "UFT",
+    "Jira Issues"
+]
+
+issue_types = [
+    "XLR: Folder Setup",
+    "CI Build Issue",
+    "Configuration Issue",
+    "Onboarding Issue",
+    "CD Deployment Issue",
+    "Bitbucket: Modify/Delete Git Repo",
+    "qTest: Provisioning",
+    "Access Issue",
+    "Metrics/Reporting",
+    "Jira: Dataplane Access",
+    "Compliance/Audit",
+    "Other",
+    "Test Automation Issue",
+    "Jira: Board/Filter/Report Issue",
+    "Enhancement/Improvement",
+    "Artifactory: Upload/Delete Artifacts, Modify Namespace",
+    "Jira: Add/Modify/Delete Data",
+    "Confluence Open Access",
+    "Bitbucket: Repo Provisioning Issue",
+    "DMZ Component Setup",
+    "SonarQube: Setup Issue",
+    "Archive/Delete Project/Issues",
+    "Create/Modify Org",
+    "Jenkins: Add/Modify/Delete BYOA Agent",
+    "Training/Consultation",
+    "Jira: Add/Modify/Delete 3-Dot",
+    "ARM: Add/Remove Approvers",
+    "CSWI Code Deploy",
+    "Setup",
+    "Rally to Jira",
+    "Troubleshoot /Error/Bug",
+    "GBAMT/EFRT Jira Migration",
+    "Setup: Jira - Add/Modify/Delete Data",
+    "Setup: Tower - Org Creation",
+    "Setup: Jenkins - Add BYOA Agent",
+    "Integration",
+    "Horizon CD Onboarding"
+]
+
+# Sample issue descriptions for each Tool and Issue Type
+# In practice, populate this with your actual issue descriptions
+sample_issue_descriptions = {
+    "Bitbucket": {
+        "Access Issue": [
+            "Bitbucket account is locked",
+            "Your Bitbucket account has been locked",
+            "Bitbucket account locked due to multiple wrong password attempts"
+        ],
+        "Bitbucket: Modify/Delete Git Repo": [
+            "Modify Git repositories in Bitbucket",
+            "Delete obsolete Git repos in Bitbucket",
+            "Bitbucket repo modification issues"
+        ],
+        "Bitbucket: Repo Provisioning Issue": [
+            "Provisioning new repositories in Bitbucket failed",
+            "Bitbucket repo provisioning errors",
+            "Unable to provision repo in Bitbucket"
+        ]
+    },
+    "Jenkins": {
+        "CI Build Issue": [
+            "Jenkins build failed due to configuration error",
+            "Jenkins CI build issues causing delays",
+            "CI build failure in Jenkins pipeline"
+        ],
+        "Jenkins: Add/Modify/Delete BYOA Agent": [
+            "Add BYOA agent in Jenkins",
+            "Modify BYOA agent settings in Jenkins",
+            "Delete BYOA agents from Jenkins"
+        ]
+    },
+    "Jira3": {
+        "Setup: Jira - Add/Modify/Delete Data": [
+            "Add data to Jira3 project",
+            "Modify existing Jira3 data entries",
+            "Delete obsolete data from Jira3"
+        ]
+    },
+    "SonarQube": {
+        "SonarQube: Setup Issue": [
+            "SonarQube installation failed",
+            "Configuration issues during SonarQube setup",
+            "SonarQube setup errors"
+        ]
+    },
+    # Add more sample descriptions for other Tools and Issue Types as needed
+}
+
+# Function to create input_text and summary
+def create_input_summary(tool, issue_type, descriptions):
+    input_text = f"Tool: {tool}\nIssue Type: {issue_type}\nIssue Descriptions:\n"
+    for desc in descriptions:
+        input_text += f"- {desc}\n"
+    # Generate a simple summary by concatenating Tool and Issue Type
+    summary = f"{tool} {issue_type} issues."
+    return input_text.strip(), summary
+
+# Create the CSV
+with open('fine_tune_data.csv', mode='w', newline='', encoding='utf-8') as file:
+    writer = csv.writer(file)
+    writer.writerow(['input_text', 'summary'])
+
+    for tool in tools:
+        if tool in sample_issue_descriptions:
+            for issue_type, descriptions in sample_issue_descriptions[tool].items():
+                input_text, summary = create_input_summary(tool, issue_type, descriptions)
+                writer.writerow([input_text, summary])
+        else:
+            # Handle Tools without predefined sample issues
+            for issue_type in issue_types:
+                # Generate a generic summary
+                summary = f"{tool} {issue_type} issues."
+                # Create a placeholder input_text
+                input_text = f"Tool: {tool}\nIssue Type: {issue_type}\nIssue Descriptions:\n- Sample issue description for {tool} and {issue_type}."
+                writer.writerow([input_text, summary])
+
+print("fine_tune_data.csv has been created successfully.")
+
+
+========================================================================================================================
+
+# fine_tune_t5.py
+
+import pandas as pd
+from transformers import T5Tokenizer, T5ForConditionalGeneration, Trainer, TrainingArguments
+from sklearn.model_selection import train_test_split
+import torch
+
+def load_data(csv_path):
+    """
+    Load the fine-tuning dataset from a CSV file.
+
+    Args:
+        csv_path (str): Path to the CSV file.
+
+    Returns:
+        train_df (DataFrame): Training dataset.
+        val_df (DataFrame): Validation dataset.
+    """
+    df = pd.read_csv(csv_path)
+    train_df, val_df = train_test_split(df, test_size=0.1, random_state=42)
+    return train_df, val_df
+
+def preprocess_data(tokenizer, df, max_input_length=512, max_target_length=150):
+    """
+    Tokenize the input and target texts.
+
+    Args:
+        tokenizer (T5Tokenizer): Tokenizer for the model.
+        df (DataFrame): DataFrame containing the dataset.
+        max_input_length (int): Maximum length for input sequences.
+        max_target_length (int): Maximum length for target sequences.
+
+    Returns:
+        inputs (dict): Tokenized inputs.
+        labels (dict): Tokenized labels.
+    """
+    inputs = tokenizer(
+        df['input_text'].tolist(),
+        max_length=max_input_length,
+        padding='max_length',
+        truncation=True,
+        return_tensors="pt"
+    )
+
+    labels = tokenizer(
+        df['summary'].tolist(),
+        max_length=max_target_length,
+        padding='max_length',
+        truncation=True,
+        return_tensors="pt"
+    )
+
+    # Replace padding token id's of the labels by -100 so it's ignored by the loss
+    labels_input_ids = labels['input_ids']
+    labels_input_ids[labels_input_ids == tokenizer.pad_token_id] = -100
+
+    return inputs, labels_input_ids
+
+def main():
+    # Paths
+    data_path = 'fine_tune_data.csv'  # Path to your fine-tuning CSV
+    model_name = 't5-small'           # You can choose 't5-base' or 't5-large' for better performance
+
+    # Load data
+    print("Loading data...")
+    train_df, val_df = load_data(data_path)
+
+    # Initialize tokenizer and model
+    print("Loading tokenizer and model...")
+    tokenizer = T5Tokenizer.from_pretrained(model_name)
+    model = T5ForConditionalGeneration.from_pretrained(model_name)
+
+    # Preprocess data
+    print("Tokenizing data...")
+    train_inputs, train_labels = preprocess_data(tokenizer, train_df)
+    val_inputs, val_labels = preprocess_data(tokenizer, val_df)
+
+    # Create torch datasets
+    class SummarizationDataset(torch.utils.data.Dataset):
+        def __init__(self, inputs, labels):
+            self.inputs = inputs
+            self.labels = labels
+
+        def __len__(self):
+            return self.inputs['input_ids'].size(0)
+
+        def __getitem__(self, idx):
+            item = {key: val[idx] for key, val in self.inputs.items()}
+            item['labels'] = self.labels[idx]
+            return item
+
+    train_dataset = SummarizationDataset(train_inputs, train_labels)
+    val_dataset = SummarizationDataset(val_inputs, val_labels)
+
+    # Define training arguments
+    training_args = TrainingArguments(
+        output_dir='./t5_fine_tuned',
+        num_train_epochs=3,
+        per_device_train_batch_size=8,
+        per_device_eval_batch_size=8,
+        warmup_steps=500,
+        weight_decay=0.01,
+        logging_dir='./logs',
+        logging_steps=100,
+        evaluation_strategy="epoch",
+        save_strategy="epoch",
+        load_best_model_at_end=True,
+        metric_for_best_model="loss",
+        greater_is_better=False
+    )
+
+    # Initialize Trainer
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_dataset,
+        eval_dataset=val_dataset
+    )
+
+    # Start training
+    print("Starting fine-tuning...")
+    trainer.train()
+
+    # Save the fine-tuned model
+    print("Saving the fine-tuned model...")
+    trainer.save_model('./t5_fine_tuned')
+    tokenizer.save_pretrained('./t5_fine_tuned')
+
+    print("Fine-tuning completed successfully.")
+
+if __name__ == "__main__":
+    main()
+
+
+    if tool:
+        conditions.append("Issues.tool = ?")
+        params.append(tool)
+    if issue_type:
+        conditions.append("Issues.issue_type = ?")
+        params.append(issue_type)
+
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+
+    query += " GROUP BY Issues.cluster_id ORDER BY COUNT(*) DESC LIMIT ?"
+    params.append(top_n)
+
+    cursor.execute(query, params)
+    results = cursor.fetchall()
+    return results
+
+
+def main():
+    # Path to your Excel file
+    excel_path = 'Issues.xlsx'  # Update this path as needed
+
+    # Read Excel data
+    df = pd.read_excel(excel_path)
+
+    # Ensure necessary columns are present
+    required_columns = ['Issue Short Description', 'Issue Type', 'Tool']
+    if not all(col in df.columns for col in required_columns):
+        raise ValueError(f"Excel file must contain columns: {required_columns}")
+
+    # Initialize SBERT model
+    sbert_model = SentenceTransformer('all-MiniLM-L6-v2')  # You can choose a different SBERT model
+
+    # Generate embeddings
+    print("Generating embeddings...")
+    embeddings = sbert_model.encode(df['Issue Short Description'].tolist(), show_progress_bar=True)
+
+    # Cluster issues
+    print("Clustering issues...")
+    cluster_labels = cluster_issues(embeddings, distance_threshold=0.5)  # Adjust threshold as needed
+
+    # Initialize T5-small summarizer
+    print("Loading summarizer...")
+    summarizer = load_summarizer(model_name='t5-small')  # Use model_path if using local model
+
+    # Generate cluster summaries
+    print("Generating cluster summaries...")
+    cluster_summaries = generate_cluster_summaries(summarizer, df, cluster_labels)
+    print(cluster_summaries)
+    # Create SQLite database
+    print("Creating database...")
+    conn = create_database('issues.db')  # Update path as needed
+
+    # Insert issues into database
+    print("Inserting issues into database...")
+    insert_data(conn, df, cluster_labels)
+
+    # Insert cluster summaries into database
+    print("Inserting cluster summaries into database...")
+    insert_clusters(conn, cluster_summaries)
+
+    print("Data insertion complete.")
+
+    # Example Queries
+    print("\n=== Example Queries ===\n")
+
+    # Top 10 issues for Bitbucket
+    print("Top 10 Issues for Tool: Bitbucket")
+    top_bitbucket = query_top_issues(conn, tool='Bitbucket', top_n=10)
+    for row in top_bitbucket:
+        print(f"Issue: {row[0]}\nIssue Type: {row[1]}\nTool: {row[2]}\nSummary: {row[3]}\n")
+
+    # Top 10 issues for Jira3 and Access Issue
+    print("Top 10 Issues for Tool: Jira3 and Issue Type: Access Issue")
+    top_jira3_access = query_top_issues(conn, tool='Jira3', issue_type='Access Issue', top_n=10)
+    for row in top_jira3_access:
+        print(f"Issue: {row[0]}\nIssue Type: {row[1]}\nTool: {row[2]}\nSummary: {row[3]}\n")
+
+    # Close the database connection
+    conn.close()
+
+
+if __name__ == "__main__":
+    main()
+
+
+================================================================================================================
+
+
+input_text,summary
+"Tool: Bitbucket
+Issue Type: Access Issue
+Issue Descriptions:
+- Bitbucket account is locked
+- Your Bitbucket account has been locked
+- Bitbucket account locked due to multiple wrong password attempts","Bitbucket account lockout issues due to multiple wrong password attempts."
+"Tool: Jenkins
+Issue Type: CI Build Issue
+Issue Descriptions:
+- Jenkins build failed due to configuration error
+- Jenkins CI build issues causing delays
+- CI build failure in Jenkins pipeline","Continuous Integration build failures in Jenkins due to configuration errors."
+"Tool: Jira3
+Issue Type: Setup: Jira - Add/Modify/Delete Data
+Issue Descriptions:
+- Add data to Jira3 project
+- Modify existing Jira3 data entries
+- Delete obsolete data from Jira3","Setup and data management tasks in Jira3 including adding, modifying, and deleting data entries."
+"Tool: SonarQube
+Issue Type: SonarQube: Setup Issue
+Issue Descriptions:
+- SonarQube installation failed
+- Configuration issues during SonarQube setup
+- SonarQube setup errors","Setup issues related to SonarQube installation and configuration."
+
+==============================================================================================================
