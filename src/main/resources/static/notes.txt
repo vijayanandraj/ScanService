@@ -1,3 +1,449 @@
+# issue_grouping.py
+
+import pandas as pd
+import sqlite3
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.cluster import AgglomerativeClustering
+from transformers import T5Tokenizer, T5ForConditionalGeneration, pipeline
+import language_tool_python
+from autocorrect import Speller
+import os
+import logging
+
+# Configure logging
+logging.basicConfig(
+    filename='issue_grouping.log',
+    level=logging.INFO,
+    format='%(asctime)s:%(levelname)s:%(message)s'
+)
+
+# Initialize spell checkers
+language_tool = language_tool_python.LanguageTool('en-US')
+spell = Speller(lang='en')
+
+def correct_spelling(text):
+    """
+    Correct spelling errors in the given text using LanguageTool and Autocorrect.
+    
+    Args:
+        text (str): Text to be corrected.
+    
+    Returns:
+        corrected_text (str): Corrected text.
+    """
+    try:
+        # Correct using LanguageTool
+        matches = language_tool.check(text)
+        corrected_text = language_tool_python.utils.correct(text, matches)
+        
+        # Further correct using Autocorrect
+        corrected_text = spell(corrected_text)
+        
+        return corrected_text
+    except Exception as e:
+        logging.error(f"Error in correct_spelling: {e}")
+        return text  # Return original text if correction fails
+
+def load_summarizer(model_name='t5-small', model_path=None):
+    """
+    Load the T5 model and tokenizer from Hugging Face or a local directory.
+    
+    Args:
+        model_name (str): Name of the Hugging Face model.
+        model_path (str): Path to the local directory containing the model.
+    
+    Returns:
+        summarizer (pipeline): Hugging Face summarization pipeline.
+    """
+    try:
+        if model_path and os.path.exists(model_path):
+            tokenizer = T5Tokenizer.from_pretrained(model_path)
+            model = T5ForConditionalGeneration.from_pretrained(model_path)
+        else:
+            tokenizer = T5Tokenizer.from_pretrained(model_name)
+            model = T5ForConditionalGeneration.from_pretrained(model_name)
+        
+        summarizer = pipeline("summarization", model=model, tokenizer=tokenizer)
+        return summarizer
+    except Exception as e:
+        logging.error(f"Error loading summarizer: {e}")
+        raise e
+
+def deduplicate_questions(questions):
+    """
+    Remove exact duplicate questions.
+    
+    Args:
+        questions (list): List of question strings.
+    
+    Returns:
+        unique_questions (list): List of unique question strings.
+    """
+    seen = set()
+    unique_questions = []
+    for q in questions:
+        q_clean = q.lower().strip()
+        if q_clean not in seen:
+            unique_questions.append(q)
+            seen.add(q_clean)
+    return unique_questions
+
+def format_questions_for_summarization(questions):
+    """
+    Format the list of questions into a single string with clear separation and instructions.
+    
+    Args:
+        questions (list): List of question strings.
+    
+    Returns:
+        formatted_text (str): Formatted string for summarization.
+    """
+    # Clear Instruction with Bullet Points
+    formatted_questions = "\n".join([f"- {q}" for q in questions])
+    formatted_text = f"Please provide a concise and descriptive summary for the following questions:\n{formatted_questions}"
+    return formatted_text
+
+def summarize_questions(summarizer, questions):
+    """
+    Generate a summary for a list of similar questions.
+    
+    Args:
+        summarizer (pipeline): Hugging Face summarization pipeline.
+        questions (list): List of question strings.
+    
+    Returns:
+        summary (str): Generated and corrected summary string.
+    """
+    try:
+        # Deduplicate questions
+        unique_questions = deduplicate_questions(questions)
+        
+        # Handle cases where all questions are identical or nearly identical
+        if len(unique_questions) == 1:
+            return unique_questions[0]
+        
+        # Format questions
+        input_text = format_questions_for_summarization(unique_questions)
+        
+        # Generate summary
+        summary = summarizer(
+            input_text,
+            max_length=100,           # Adjusted for concise summaries
+            min_length=30,            # Adjusted for concise summaries
+            num_beams=4,              # Beam search for better quality
+            early_stopping=True,
+            no_repeat_ngram_size=3,   # Prevent repetition
+            do_sample=False
+        )
+        
+        # Extract summary text
+        summary_text = summary[0]['summary_text']
+        
+        # Correct spelling
+        corrected_summary = correct_spelling(summary_text)
+        
+        return corrected_summary
+    except Exception as e:
+        logging.error(f"Error in summarize_questions: {e}")
+        return "Summary generation failed."
+
+def cluster_issues(embeddings, distance_threshold=1.0):
+    """
+    Cluster issues based on embeddings using Agglomerative Clustering.
+    
+    Args:
+        embeddings (ndarray): Array of embeddings.
+        distance_threshold (float): The linkage distance threshold above which clusters will not be merged.
+    
+    Returns:
+        cluster_labels (list): List of cluster labels for each issue.
+    """
+    try:
+        clustering_model = AgglomerativeClustering(
+            n_clusters=None,
+            metric='cosine',           # Updated parameter from 'affinity' to 'metric'
+            linkage='average',
+            distance_threshold=distance_threshold
+        )
+        cluster_labels = clustering_model.fit_predict(embeddings)
+        return cluster_labels
+    except Exception as e:
+        logging.error(f"Error in cluster_issues: {e}")
+        raise e
+
+def create_database(db_path='issues.db'):
+    """
+    Create SQLite database and necessary tables.
+    
+    Args:
+        db_path (str): Path to the SQLite database file.
+    
+    Returns:
+        conn (sqlite3.Connection): SQLite connection object.
+    """
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Create Issues table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS Issues (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                issue_short_description TEXT,
+                issue_type TEXT,
+                tool TEXT,
+                cluster_id INTEGER,
+                FOREIGN KEY (cluster_id) REFERENCES Clusters(cluster_id)
+            )
+        ''')
+        
+        # Create Clusters table with correct data types
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS Clusters (
+                cluster_id INTEGER PRIMARY KEY,
+                summary TEXT
+            )
+        ''')
+        
+        conn.commit()
+        return conn
+    except Exception as e:
+        logging.error(f"Error creating database: {e}")
+        raise e
+
+def insert_data(conn, df, cluster_labels):
+    """
+    Insert issues into the Issues table.
+    
+    Args:
+        conn (sqlite3.Connection): SQLite connection object.
+        df (DataFrame): Pandas DataFrame containing the issues.
+        cluster_labels (list): List of cluster labels corresponding to each issue.
+    """
+    try:
+        cursor = conn.cursor()
+        for idx, row in df.iterrows():
+            cursor.execute('''
+                INSERT INTO Issues (issue_short_description, issue_type, tool, cluster_id)
+                VALUES (?, ?, ?, ?)
+            ''', (
+                row['Issue Short Description'],
+                row['Issue Type'],
+                row['Tool'],
+                cluster_labels[idx]
+            ))
+        conn.commit()
+    except Exception as e:
+        logging.error(f"Error inserting data into Issues table: {e}")
+        raise e
+
+def insert_clusters(conn, cluster_summaries):
+    """
+    Insert cluster summaries into the Clusters table.
+    
+    Args:
+        conn (sqlite3.Connection): SQLite connection object.
+        cluster_summaries (dict): Dictionary mapping cluster_id to summary.
+    """
+    try:
+        cursor = conn.cursor()
+        for cluster_id, summary in cluster_summaries.items():
+            # Ensure cluster_id is integer
+            try:
+                cluster_id_int = int(cluster_id)
+            except ValueError:
+                logging.error(f"Invalid cluster_id: {cluster_id}. Skipping.")
+                continue
+            
+            # Debugging: Print types
+            logging.info(f"Inserting Cluster ID: {cluster_id_int}, Summary: {summary}")
+            
+            cursor.execute('''
+                INSERT OR REPLACE INTO Clusters (cluster_id, summary)
+                VALUES (?, ?)
+            ''', (
+                cluster_id_int,
+                summary
+            ))
+        conn.commit()
+    except Exception as e:
+        logging.error(f"Error inserting data into Clusters table: {e}")
+        raise e
+
+def generate_cluster_summaries(summarizer, df, cluster_labels):
+    """
+    Generate summaries for each cluster.
+    
+    Args:
+        summarizer (pipeline): Hugging Face summarization pipeline.
+        df (DataFrame): Pandas DataFrame containing the issues.
+        cluster_labels (list): List of cluster labels corresponding to each issue.
+    
+    Returns:
+        cluster_summaries (dict): Dictionary mapping cluster_id to summary.
+    """
+    try:
+        cluster_summaries = {}
+        clusters = {}
+        
+        # Organize issues by cluster
+        for idx, label in enumerate(cluster_labels):
+            if label not in clusters:
+                clusters[label] = []
+            clusters[label].append(df.iloc[idx]['Issue Short Description'])
+        
+        # Generate summaries for each cluster
+        for cluster_id, issues in clusters.items():
+            summary = summarize_questions(summarizer, issues)
+            cluster_summaries[cluster_id] = summary
+        
+        return cluster_summaries
+    except Exception as e:
+        logging.error(f"Error generating cluster summaries: {e}")
+        raise e
+
+def query_top_issues(conn, tool=None, issue_type=None, top_n=10):
+    """
+    Query top N issues based on Tool and/or Issue Type.
+    
+    Args:
+        conn (sqlite3.Connection): SQLite connection object.
+        tool (str): Tool name to filter.
+        issue_type (str): Issue Type to filter.
+        top_n (int): Number of top issues to retrieve.
+    
+    Returns:
+        results (list of tuples): Retrieved issues.
+    """
+    try:
+        cursor = conn.cursor()
+        query = '''
+            SELECT Issues.issue_short_description, Issues.issue_type, Issues.tool, Clusters.summary, COUNT(*) as issue_count
+            FROM Issues
+            JOIN Clusters ON Issues.cluster_id = Clusters.cluster_id
+        '''
+        conditions = []
+        params = []
+        
+        if tool:
+            conditions.append("Issues.tool = ?")
+            params.append(tool)
+        if issue_type:
+            conditions.append("Issues.issue_type = ?")
+            params.append(issue_type)
+        
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        
+        query += " GROUP BY Issues.cluster_id ORDER BY issue_count DESC LIMIT ?"
+        params.append(top_n)
+        
+        cursor.execute(query, params)
+        results = cursor.fetchall()
+        return results
+    except Exception as e:
+        logging.error(f"Error querying top issues: {e}")
+        return []
+
+def validate_dataframe(df):
+    """
+    Validate that the DataFrame contains the necessary columns and no missing values.
+    
+    Args:
+        df (DataFrame): Pandas DataFrame to validate.
+    
+    Raises:
+        ValueError: If validation fails.
+    """
+    required_columns = ['Issue Short Description', 'Issue Type', 'Tool']
+    missing_columns = [col for col in required_columns if col not in df.columns]
+    if missing_columns:
+        raise ValueError(f"Missing columns: {missing_columns}")
+    
+    if df[required_columns].isnull().any().any():
+        raise ValueError("There are missing values in the required columns.")
+
+def main():
+    try:
+        # Path to your Excel file
+        excel_path = 'issues.xlsx'  # Update this path as needed
+        
+        # Read Excel data
+        print("Reading Excel data...")
+        df = pd.read_excel(excel_path)
+        
+        # Validate DataFrame
+        validate_dataframe(df)
+        logging.info("DataFrame validation passed.")
+        
+        # Initialize SBERT model
+        print("Loading SBERT model...")
+        sbert_model = SentenceTransformer('all-MiniLM-L6-v2')  # You can choose a different SBERT model
+        
+        # Generate embeddings
+        print("Generating embeddings...")
+        embeddings = sbert_model.encode(df['Issue Short Description'].tolist(), show_progress_bar=True)
+        logging.info("Embeddings generated.")
+        
+        # Cluster issues
+        print("Clustering issues...")
+        cluster_labels = cluster_issues(embeddings, distance_threshold=0.5)  # Adjust threshold as needed
+        logging.info("Clustering completed.")
+        
+        # Initialize T5-small summarizer
+        print("Loading summarizer...")
+        summarizer = load_summarizer(model_name='t5-small')  # Use model_path if using local model
+        logging.info("Summarizer loaded.")
+        
+        # Generate cluster summaries
+        print("Generating cluster summaries...")
+        cluster_summaries = generate_cluster_summaries(summarizer, df, cluster_labels)
+        logging.info("Cluster summaries generated.")
+        
+        # Create SQLite database
+        print("Creating database...")
+        conn = create_database('issues.db')  # Update path as needed
+        logging.info("Database created/opened.")
+        
+        # Insert issues into database
+        print("Inserting issues into database...")
+        insert_data(conn, df, cluster_labels)
+        logging.info("Issues inserted into database.")
+        
+        # Insert cluster summaries into database
+        print("Inserting cluster summaries into database...")
+        insert_clusters(conn, cluster_summaries)
+        logging.info("Cluster summaries inserted into database.")
+        
+        print("Data insertion complete.")
+        
+        # Example Queries
+        print("\n=== Example Queries ===\n")
+        
+        # Top 10 issues for Bitbucket
+        print("Top 10 Issues for Tool: Bitbucket")
+        top_bitbucket = query_top_issues(conn, tool='Bitbucket', top_n=10)
+        for row in top_bitbucket:
+            print(f"Issue: {row[0]}\nIssue Type: {row[1]}\nTool: {row[2]}\nSummary: {row[3]}\nCount: {row[4]}\n")
+        
+        # Top 10 issues for Jira3 and Access Issue
+        print("Top 10 Issues for Tool: Jira3 and Issue Type: Access Issue")
+        top_jira3_access = query_top_issues(conn, tool='Jira3', issue_type='Access Issue', top_n=10)
+        for row in top_jira3_access:
+            print(f"Issue: {row[0]}\nIssue Type: {row[1]}\nTool: {row[2]}\nSummary: {row[3]}\nCount: {row[4]}\n")
+        
+        # Close the database connection
+        conn.close()
+        logging.info("Database connection closed.")
+    
+    except Exception as e:
+        logging.error(f"An error occurred in main: {e}")
+        print(f"An error occurred: {e}")
+
+if __name__ == "__main__":
+    main()
+
 from transformers import T5Tokenizer, T5ForConditionalGeneration
 
 # Load the T5-small model and tokenizer
