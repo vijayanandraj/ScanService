@@ -1,3 +1,37 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "your-package-name"
+version = "0.1.0"
+description = "A description of your Python package"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"},
+]
+dependencies = [
+    "requests",
+    "numpy",
+]
+readme = "README.md"
+requires-python = ">=3.6"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["*"]
+
+[tool.setuptools.package-data]
+"your_package_name" = ["*.html"]  # Include HTML templates, adjust this to your needs
+
+[project.scripts]
+run-flask-app = "your_package_name.your_entry_file:main"
+
+
 # issue_grouping.py - end to end flow
 
 import pandas as pd
