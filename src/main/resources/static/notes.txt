@@ -1,3 +1,41 @@
+import json
+from setuptools import setup, find_packages
+
+# Load setup configuration from setup.json
+with open("setup.json", "r") as f:
+    setup_config = json.load(f)
+
+# Load dependencies from requirements.txt
+with open("requirements.txt", "r") as f:
+    install_requires = f.read().splitlines()
+
+setup(
+    name=setup_config["name"],
+    version=setup_config["version"],
+    description=setup_config["description"],
+    author=setup_config["author"],
+    author_email=setup_config["author_email"],
+    url=setup_config["url"],
+    packages=find_packages(include=["*"]),
+    install_requires=install_requires,
+    include_package_data=True,
+    package_data={
+        '': ['*.html'],  # Include HTML templates
+    },
+    entry_points={
+        'console_scripts': [
+            'run-flask-app=your_module.your_entry_file:main',  # Define the entry point
+        ],
+    },
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ],
+    python_requires='>=3.6',
+)
+
+
 [build-system]
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
