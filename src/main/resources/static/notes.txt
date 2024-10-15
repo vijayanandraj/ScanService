@@ -1,3 +1,13 @@
+def add_comment(jira, issue):
+    try:
+        jira.add_comment(issue, CUSTOM_COMMENT)
+        logging.info(f"Added comment to ticket {issue.key}")
+        return True
+    except JIRAError as e:
+        logging.error(f"Failed to add comment to ticket {issue.key}: {str(e)}")
+        return False
+
+
 from jira import JIRA
 from jira.exceptions import JIRAError
 from tqdm import tqdm
