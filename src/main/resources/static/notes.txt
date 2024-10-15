@@ -15,6 +15,98 @@ JIRA_API_TOKEN = "your-api-token"
 # JQL query to find the tickets in the specified range
 JQL_QUERY = 'project = DLAB AND issuekey >= DLAB-1651 AND issuekey <= DLAB-12500'
 
+# Define the resolution
+CANCELLED_RESOLUTION = "Cancelled"
+
+def connect_to_jira():
+    try:
+        return JIRA(server=JIRA_SERVER, basic_auth=(JIRA_EMAIL, JIRA_API_TOKEN))
+    except JIRAError as e:
+        logging.error(f"Failed to connect to JIRA: {str(e)}")
+        raise
+
+def get_tickets(jira):
+    try:
+        return jira.search_issues(JQL_QUERY, maxResults=False)
+    except JIRAError as e:
+        logging.error(f"Failed to fetch tickets: {str(e)}")
+        raise
+
+def transition_to_open(jira, issue):
+    try:
+        jira.transition_issue(issue, 'Open')
+        logging.info(f"Transitioned ticket {issue.key} to 'Open'")
+        return True
+    except JIRAError as e:
+        logging.error(f"Failed to transition ticket {issue.key} to 'Open': {str(e)}")
+        return False
+
+def close_with_cancelled_resolution(jira, issue):
+    try:
+        jira.transition_issue(issue, 'Close', fields={'resolution': {'name': CANCELLED_RESOLUTION}})
+        logging.info(f"Closed ticket {issue.key} with 'Cancelled' resolution")
+        return True
+    except JIRAError as e:
+        logging.error(f"Failed to close ticket {issue.key} with 'Cancelled' resolution: {str(e)}")
+        return False
+
+def detach_from_epic(jira, issue):
+    try:
+        epic_link_field = next((f for f in jira.fields() if f['name'] == 'Epic Link'), None)
+        if epic_link_field:
+            issue.update(fields={epic_link_field['id']: None})
+            logging.info(f"Detached ticket {issue.key} from EPIC")
+            return True
+        else:
+            logging.warning(f"No 'Epic Link' field found for {issue.key}")
+            return False
+    except JIRAError as e:
+        logging.error(f"Failed to detach ticket {issue.key} from EPIC: {str(e)}")
+        return False
+
+def process_ticket(jira, issue):
+    # Step 1: Transition to "Open"
+    if transition_to_open(jira, issue):
+        time.sleep(1)  # Wait a short time to allow JIRA to process the transition
+
+        # Step 2: Close with "Cancelled" resolution
+        if close_with_cancelled_resolution(jira, issue):
+            # Step 3: Detach from EPIC
+            detach_from_epic(jira, issue)
+        else:
+            logging.warning(f"Could not close ticket {issue.key} with 'Cancelled' resolution")
+    else:
+        logging.warning(f"Could not open ticket {issue.key}. It may already be in the desired state.")
+
+def main():
+    jira = connect_to_jira()
+    issues = get_tickets(jira)
+
+    logging.info(f"Found {len(issues)} tickets to process")
+
+    for issue in tqdm(issues, desc="Processing tickets"):
+        process_ticket(jira, issue)
+
+if __name__ == "__main__":
+    main()
+
+from jira import JIRA
+from jira.exceptions import JIRAError
+from tqdm import tqdm
+import logging
+import time
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Replace these with your actual JIRA instance details
+JIRA_SERVER = "https://your-domain.atlassian.net"
+JIRA_EMAIL = "your-email@example.com"
+JIRA_API_TOKEN = "your-api-token"
+
+# JQL query to find the tickets in the specified range
+JQL_QUERY = 'project = DLAB AND issuekey >= DLAB-1651 AND issuekey <= DLAB-12500'
+
 def connect_to_jira():
     try:
         return JIRA(server=JIRA_SERVER, basic_auth=(JIRA_EMAIL, JIRA_API_TOKEN))
