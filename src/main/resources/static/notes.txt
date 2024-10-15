@@ -1,3 +1,70 @@
+from jira import JIRA
+from jira.exceptions import JIRAError
+from tqdm import tqdm
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Replace these with your actual JIRA instance details
+JIRA_SERVER = "https://your-domain.atlassian.net"
+JIRA_EMAIL = "your-email@example.com"
+JIRA_API_TOKEN = "your-api-token"
+
+# JQL query to find the tickets in the specified range
+JQL_QUERY = 'project = DLAB AND issuekey >= DLAB-1651 AND issuekey <= DLAB-12500'
+
+def connect_to_jira():
+    try:
+        return JIRA(server=JIRA_SERVER, basic_auth=(JIRA_EMAIL, JIRA_API_TOKEN))
+    except JIRAError as e:
+        logging.error(f"Failed to connect to JIRA: {str(e)}")
+        raise
+
+def get_tickets(jira):
+    try:
+        return jira.search_issues(JQL_QUERY, maxResults=False)
+    except JIRAError as e:
+        logging.error(f"Failed to fetch tickets: {str(e)}")
+        raise
+
+def cancel_and_detach_from_epic(jira, issue):
+    try:
+        # Find the 'Cancel' transition ID
+        transitions = jira.transitions(issue)
+        cancel_transition_id = next((t['id'] for t in transitions if t['name'].lower() == 'cancel'), None)
+
+        if cancel_transition_id:
+            jira.transition_issue(issue, cancel_transition_id)
+            logging.info(f"Cancelled ticket {issue.key}")
+        else:
+            logging.warning(f"No 'Cancel' transition found for {issue.key}")
+
+        # Detach from EPIC
+        epic_link_field = next((f for f in jira.fields() if f['name'] == 'Epic Link'), None)
+        if epic_link_field:
+            issue.update(fields={epic_link_field['id']: None})
+            logging.info(f"Detached ticket {issue.key} from EPIC")
+        else:
+            logging.warning(f"No 'Epic Link' field found for {issue.key}")
+
+        return True
+    except JIRAError as e:
+        logging.error(f"Failed to cancel and detach ticket {issue.key}: {str(e)}")
+        return False
+
+def main():
+    jira = connect_to_jira()
+    issues = get_tickets(jira)
+
+    logging.info(f"Found {len(issues)} tickets to process")
+
+    for issue in tqdm(issues, desc="Processing tickets"):
+        cancel_and_detach_from_epic(jira, issue)
+
+if __name__ == "__main__":
+    main()
+
 import json
 from setuptools import setup, find_packages
 
