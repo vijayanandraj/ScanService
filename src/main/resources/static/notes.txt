@@ -1,3 +1,123 @@
+import logging
+from queue import Queue
+from threading import Thread
+from jira import JIRA
+from tqdm import tqdm
+import time
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    filename='jira_cleanup.log',
+    filemode='w'
+)
+
+# Add console handler if you want to see logs in console as well
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+logging.getLogger('').addHandler(console)
+
+# Replace these with your actual JIRA instance details
+JIRA_SERVER = "https://your-domain.atlassian.net"
+JIRA_EMAIL = "your-email@example.com"
+JIRA_API_TOKEN = "your-api-token"
+
+# JQL query to find the tickets
+JQL_QUERY = '''
+    project = DLAB
+    AND issuekey >= DLAB-1651
+    AND issuekey <= DLAB-12500
+    AND summary ~ "Your specific text here"
+'''
+
+CANCELLED_RESOLUTION = "Cancelled"
+CUSTOM_COMMENT = "This issue has been automatically closed as part of a cleanup process."
+
+def connect_to_jira():
+    try:
+        return JIRA(server=JIRA_SERVER, basic_auth=(JIRA_EMAIL, JIRA_API_TOKEN))
+    except Exception as e:
+        logging.error(f"Failed to connect to JIRA: {str(e)}")
+        raise
+
+def get_tickets(jira):
+    try:
+        return jira.search_issues(JQL_QUERY, maxResults=False)
+    except Exception as e:
+        logging.error(f"Failed to fetch tickets: {str(e)}")
+        raise
+
+def process_ticket(jira, issue):
+    start_time = time.time()
+    try:
+        # Your existing process_ticket logic here
+        # For example:
+        jira.transition_issue(issue, 'Open')
+        time.sleep(1)
+        jira.transition_issue(issue, 'Close', fields={'resolution': {'name': CANCELLED_RESOLUTION}})
+        jira.add_comment(issue, CUSTOM_COMMENT)
+        # Detach from epic logic here
+
+        end_time = time.time()
+        processing_time = end_time - start_time
+        logging.info(f"Processed ticket {issue.key} in {processing_time:.2f} seconds")
+    except Exception as e:
+        end_time = time.time()
+        processing_time = end_time - start_time
+        logging.error(f"Error processing ticket {issue.key} after {processing_time:.2f} seconds: {str(e)}")
+
+def worker(jira, queue, progress_bar):
+    while True:
+        issue = queue.get()
+        if issue is None:
+            break
+        try:
+            process_ticket(jira, issue)
+        except Exception as e:
+            logging.error(f"Error in worker thread for ticket {issue.key}: {str(e)}")
+        finally:
+            queue.task_done()
+            progress_bar.update(1)
+
+def main():
+    overall_start_time = time.time()
+
+    jira = connect_to_jira()
+    issues = get_tickets(jira)
+
+    logging.info(f"Found {len(issues)} tickets to process")
+
+    queue = Queue()
+    for issue in issues:
+        queue.put(issue)
+
+    num_threads = 10
+    progress_bar = tqdm(total=len(issues), desc="Processing tickets")
+
+    threads = []
+    for _ in range(num_threads):
+        thread = Thread(target=worker, args=(jira, queue, progress_bar))
+        thread.start()
+        threads.append(thread)
+
+    queue.join()
+
+    for _ in range(num_threads):
+        queue.put(None)
+    for thread in threads:
+        thread.join()
+
+    progress_bar.close()
+
+    overall_end_time = time.time()
+    total_time = overall_end_time - overall_start_time
+    logging.info(f"Total processing time: {total_time:.2f} seconds")
+    logging.info(f"Average time per ticket: {total_time / len(issues):.2f} seconds")
+
+if __name__ == "__main__":
+    main()
+
 def add_comment(jira, issue):
     try:
         jira.add_comment(issue, CUSTOM_COMMENT)
