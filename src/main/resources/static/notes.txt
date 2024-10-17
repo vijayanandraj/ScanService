@@ -1,3 +1,54 @@
+# File: setup.py
+import json
+from setuptools import setup, find_packages
+
+# Read the contents of your README file
+with open('README.md', 'r', encoding='utf-8') as f:
+    long_description = f.read()
+
+# Read the contents of your setup.json file
+with open('setup.json', 'r') as f:
+    config = json.load(f)
+
+# Read the contents of your requirements.txt file
+with open('requirements.txt', 'r') as f:
+    requirements = f.read().splitlines()
+
+setup(
+    name=config['name'],
+    version=config['version'],
+    author=config.get('author', ''),
+    author_email=config.get('author_email', ''),
+    description=config.get('description', ''),
+    long_description=long_description,
+    long_description_content_type='text/markdown',
+    url=config.get('url', ''),
+    package_dir={"": "src"},
+    packages=find_packages(where="src"),
+    include_package_data=True,
+    install_requires=requirements,
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ],
+    python_requires='>=3.6',
+    entry_points={
+        'console_scripts': [
+            'edt-service=edt_service.app:main',
+        ],
+    },
+)
+
+
+
+# File: MANIFEST.in
+include README.md
+include requirements.txt
+include setup.json
+recursive-include src/edt_service/templates *
+recursive-include src/edt_service/static *
+
 import logging
 from queue import Queue
 from threading import Thread
