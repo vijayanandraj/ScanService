@@ -1,3 +1,19 @@
+def setup_logging():
+    log_folder = os.path.join(os.getcwd(), 'logs')
+
+    if not os.path.exists(log_folder):
+        os.makedirs(log_folder)
+
+    log_file = os.path.join(log_folder, 'app.log')
+    handler = RotatingFileHandler(log_file, maxBytes=10*1024*1024, backupCount=5)
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
+    handler.setFormatter(formatter)
+
+    # Set up root logger
+    logging.getLogger().setLevel(logging.INFO)
+    logging.getLogger().addHandler(handler)
+
 # File: setup.py
 import json
 from setuptools import setup, find_packages
