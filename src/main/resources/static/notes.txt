@@ -1,3 +1,28 @@
+def create_response_email(mail, jira_key):
+    """Create formatted email response with GUID"""
+    guid = str(uuid.uuid4())
+
+    response_body = (
+        "Thank you for reaching out to Enterprise Developer Tooling.\n"  # First line
+        "\n"  # Empty line
+        "A ticket has been created for your reference:\n"  # Second line
+        f"Jira Ticket: https://jira3.horizon.bankofamerica.com/browse/{jira_key}\n"  # Third line
+        f"Thread ID: {guid}\n"  # Fourth line
+        "\n"  # Empty line
+        "Please feel free to comment on the ticket if you would like to leave feedback.\n"  # Fifth line
+        "\n"  # Empty line
+        "Best regards,\n"  # Sixth line
+        "Enterprise Developer Tooling Team"  # Seventh line
+    )
+
+    # Create the email reply
+    mail.create_reply_all(
+        subject="Re: " + mail.subject,
+        body=response_body
+    )
+
+    return guid
+
 import uuid
 import re
 
