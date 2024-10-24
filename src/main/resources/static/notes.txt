@@ -1,3 +1,41 @@
+import uuid
+import re
+
+def generate_guid():
+    """Generate a simple GUID"""
+    return str(uuid.uuid4())
+
+def add_guid_to_body(body, guid=None):
+    """Add GUID to email body"""
+    if guid is None:
+        guid = generate_guid()
+    guid_line = f"\n\nReference ID: {guid}\n"
+    return body + guid_line
+
+def extract_guid_from_body(body):
+    """Extract GUID from email body if present"""
+    pattern = r'Reference ID: ([\w-]+)'
+    match = re.search(pattern, body)
+    return match.group(1) if match else None
+
+# Example usage:
+original_body = """
+Thank you for contacting IT Support.
+Your ticket has been created and we will get back to you shortly.
+
+Best regards,
+IT Support Team
+"""
+
+# Adding GUID to email response
+response_body = add_guid_to_body(original_body)
+print("Email body with GUID:")
+print(response_body)
+
+# Later, when receiving a reply, extract the GUID
+extracted_guid = extract_guid_from_body(response_body)
+print(f"\nExtracted GUID: {extracted_guid}")
+
 def setup_logging():
     log_folder = os.path.join(os.getcwd(), 'logs')
 
