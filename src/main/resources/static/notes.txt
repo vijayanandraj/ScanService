@@ -1,17 +1,3 @@
-Hi [Boss's Name],
-
-I wanted to share some key takeaways from the Java CoE meeting today:
-
-I'll be working with John, Brady, and Tebarek (Scrum Master) on a strategy meeting where we'll draft the mission and vision for our efforts.
-I’ll be taking ownership of development containers to accelerate the POC and eventual rollout.
-I'm getting involved in a Co-Pilot POC.
-I’ll also be contributing to the Java CoE alongside Jordan and Lynnelle (the Java Product Owner), specifically on building accelerators for the migration from JDK 8 to JDK 11.
-Overall, we have a solid book of work ahead of us that will significantly ease the developer experience. I'm excited about the potential impact these initiatives will have in making developers' lives easier and streamlining processes.
-
-Let me know if you'd like more details or updates.
-
-Best regards,
-Vijay
 
 def extract_ticket_and_guid(email_body: str):
     """Extract Jira ticket ID and Thread ID from email body"""
