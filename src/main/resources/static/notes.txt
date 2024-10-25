@@ -1,3 +1,14 @@
+Hi John and Lynnelle,
+
+Thank you so much, John, for the kind introduction. I appreciate the opportunity to get involved in the Java CoE and contribute to the efforts.
+
+Lynnelle, thank you for extending the invitation! The current meeting time works well for me. I'm comfortable with 10:30 AM EST during daylight savings time and would prefer 10:00 AM EST if we're in standard time.
+
+Looking forward to joining the next meeting and collaborating with the team.
+
+Best regards,
+Vijay
+
 def extract_ticket_and_guid(email_body: str):
     """Extract Jira ticket ID and Thread ID from email body"""
     jira_pattern = r'https://jira3\.horizon\.bankofamerica\.com/browse/([A-Z]+-\d+)'
