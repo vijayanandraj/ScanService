@@ -1,3 +1,5 @@
+DevContainers (Development Containers) are standardized, containerized environments that encapsulate all necessary tools, dependencies, and configurations required for software development. They ensure that every developer works within an identical setup, regardless of their local machine’s operating system or hardware.
+
 How DevContainers Work:
 
 Configuration Specifications:
