@@ -1,3 +1,60 @@
+Ah, great question! Let me explain the architecture of VS Code with Dev Containers:
+VS Code's architecture with Dev Containers works in a client-server model:
+
+Client Side (Host Machine):
+
+
+VS Code UI/Editor
+Extension Host Process for UI-related extensions
+Your source code files
+
+
+Container Side (Dev Container):
+
+
+Development tools (Java, Maven, etc.)
+Language servers
+Development-specific extensions
+Build/run environment
+
+When you specify extensions in devcontainer.json, they are installed in the container because:
+
+Language Services:
+
+
+Extensions like vscjava.vscode-java-pack need to run where the Java compiler and tools are
+The Java Language Server runs inside the container to access the Java runtime
+This ensures code completion, diagnostics, and debugging work with the container's Java version
+
+
+Tool Integration:
+
+
+Maven extension needs to interact with Maven installed in the container
+Spring Boot extensions need to access Spring tools in the container
+These extensions communicate with VS Code UI via VS Code's remote protocol
+
+[Your Machine]                        [Dev Container]
+VS Code UI  <--Remote Protocol-->     Java Language Server
+Editor      <-------------------->    Maven
+Extensions UI                         Spring Boot Tools
+                                     Development Extensions
+
+An example to illustrate:
+
+When you type Java code, the keystroke happens in VS Code on your machine
+The code is sent to the Java Language Server running in the container
+The server analyzes the code using the container's Java installation
+Results (completions, errors) are sent back to VS Code UI
+
+If we didn't install these extensions in the container:
+
+Code completion wouldn't work
+Build tools wouldn't be accessible
+Debugging wouldn't function
+Language features would be missing
+
+
 DevContainers (Development Containers) are standardized, containerized environments that encapsulate all necessary tools, dependencies, and configurations required for software development. They ensure that every developer works within an identical setup, regardless of their local machine’s operating system or hardware.
 
 How DevContainers Work:
