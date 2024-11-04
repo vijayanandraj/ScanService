@@ -1,3 +1,78 @@
+# setup.py
+from setuptools import setup, find_packages
+from pathlib import Path
+import os
+import site
+
+def generate_env_file():
+    """Generate .env file with default configuration"""
+    # Determine installation directory
+    # For pip install edt_service.tar.gz, this will be in site-packages
+    if 'pip' in __file__:
+        # When installed via pip, use site-packages directory
+        install_dir = Path(site.getsitepackages()[0]) / 'edt_service'
+    else:
+        # For development, use current directory
+        install_dir = Path.cwd()
+    
+    env_file = install_dir / '.env'
+    print(f"\nGenerating .env file at: {env_file.absolute()}")
+    
+    # Default configuration
+    env_defaults = {
+        # Exchange settings
+        'EXCHANGE_SERVER': 'outlook.office365.com',
+        'EXCHANGE_FOLDER': 'Inbox',
+        
+        # JIRA settings
+        'JIRA_URL': 'https://your-company.atlassian.net',
+        'JIRA_PROJECT': 'PROJ',
+        
+        # Scheduler settings
+        'SCHEDULER_ENABLED': 'True',
+        'SCHEDULER_INTERVAL': '300',
+        
+        # Logging settings
+        'LOG_LEVEL': 'INFO',
+        'LOG_FILE': 'app.log',
+    }
+    
+    # Create directory if it doesn't exist
+    env_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Write .env file if it doesn't exist
+    if not env_file.exists():
+        with open(env_file, 'w') as f:
+            for key, value in env_defaults.items():
+                f.write(f'{key}={value}\n')
+            
+            # Add commented section for secrets
+            f.write('\n# Secrets to be set using config_manager.py:\n')
+            f.write('# EXCHANGE_PASSWORD_ENCRYPTED=\n')
+            f.write('# EXCHANGE_EMAIL=\n')
+            f.write('# JIRA_TOKEN_ENCRYPTED=\n')
+        print(f"Created new .env file at {env_file}")
+    else:
+        print(f".env file already exists at {env_file}, skipping generation")
+
+setup(
+    name='edt_service',
+    version='1.0.0',
+    packages=find_packages(),
+    install_requires=[
+        'flask',
+        'flask-apscheduler',
+        'python-dotenv',
+        'cryptography',
+        # other dependencies
+    ],
+    # Call generate_env_file during installation
+    cmdclass={
+        'install': lambda command: (generate_env_file(), command),
+        'develop': lambda command: (generate_env_file(), command),
+    }
+)
+
 import smtplib
 
    def test_smtp_connection(host, port):
