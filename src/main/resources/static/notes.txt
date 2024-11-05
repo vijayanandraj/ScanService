@@ -1,3 +1,111 @@
+from jira import JIRA
+import pandas as pd
+import os
+from datetime import datetime
+
+def connect_to_jira(jira_server, username, api_token):
+    """
+    Connect to JIRA instance using basic authentication
+    """
+    try:
+        jira = JIRA(server=jira_server, basic_auth=(username, api_token))
+        return jira
+    except Exception as e:
+        print(f"Failed to connect to JIRA: {str(e)}")
+        return None
+
+def format_comments(comments):
+    """
+    Format comments with delimiter and user information
+    Comments are sorted chronologically with oldest first
+    """
+    if not comments:
+        return ""
+
+    formatted_comments = []
+    delimiter = "================\n"
+
+    # Sort comments by created date
+    sorted_comments = sorted(comments, key=lambda x: x.created)
+
+    for comment in sorted_comments:
+        comment_text = f"Author: {comment.author.displayName}\n"
+        comment_text += f"Date: {comment.created}\n"
+        comment_text += f"Comment:\n{comment.body}\n"
+        formatted_comments.append(comment_text)
+
+    return delimiter.join(formatted_comments)
+
+def process_jira_tickets(jira_server, username, api_token, input_csv, output_excel):
+    """
+    Main function to process JIRA tickets and create Excel output
+    """
+    # Connect to JIRA
+    jira = connect_to_jira(jira_server, username, api_token)
+    if not jira:
+        return
+
+    try:
+        # Read ticket IDs from CSV
+        df = pd.read_csv(input_csv)
+        ticket_column = df.columns[0]  # Assume first column contains ticket IDs
+
+        # Initialize lists to store data
+        summaries = []
+        descriptions = []
+        all_comments = []
+
+        # Process each ticket
+        for ticket_id in df[ticket_column]:
+            try:
+                issue = jira.issue(ticket_id)
+
+                # Get summary
+                summaries.append(issue.fields.summary)
+
+                # Get description
+                descriptions.append(issue.fields.description or "")
+
+                # Get comments
+                comments = jira.comments(issue)
+                formatted_comments = format_comments(comments)
+                all_comments.append(formatted_comments)
+
+                print(f"Successfully processed ticket: {ticket_id}")
+
+            except Exception as e:
+                print(f"Error processing ticket {ticket_id}: {str(e)}")
+                summaries.append("ERROR")
+                descriptions.append("ERROR")
+                all_comments.append("ERROR")
+
+        # Create output DataFrame
+        output_df = pd.DataFrame({
+            'Summary': summaries,
+            'Description': descriptions,
+            'Comments': all_comments
+        })
+
+        # Write to Excel
+        output_df.to_excel(output_excel, index=False, engine='openpyxl')
+        print(f"Successfully created Excel file: {output_excel}")
+
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+
+if __name__ == "__main__":
+    # Configuration
+    JIRA_SERVER = "https://your-jira-instance.com"
+    USERNAME = "your-username"
+    API_TOKEN = "your-api-token"
+
+    # File paths
+    INPUT_CSV = "jira_tickets.csv"
+    OUTPUT_EXCEL = f"jira_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+    # Run the process
+    process_jira_tickets(JIRA_SERVER, USERNAME, API_TOKEN, INPUT_CSV, OUTPUT_EXCEL)
+
 # location_inspector.py
 import site
 import sys
