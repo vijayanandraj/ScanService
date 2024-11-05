@@ -1,3 +1,18 @@
+GIVEN
+
+The current source code contains hard-coded secrets (such as API keys, passwords) and a hard-coded nbkid identifier.
+These hard-coded values are embedded directly within the application's codebase, posing security risks and hindering maintainability.
+WHEN
+
+A developer refactors the source code to remove all hard-coded secrets and the nbkid.
+The secrets and nbkid are moved to secure external configuration sources (e.g., environment variables, configuration files, secret management services).
+THEN
+
+The application retrieves secrets and the nbkid from the external configuration sources at runtime.
+Security is enhanced by preventing sensitive information from being exposed in the codebase.
+Maintainability is improved, allowing for easier updates and management of secrets and identifiers without modifying the source code.
+Compliance with security best practices and organizational policies is achieved.
+
 def filter_email_addresses(to_list=None, from_addr=None, cc_list=None, exclude_patterns=None, exact_emails=None):
     if exclude_patterns is None:
         exclude_patterns = [r'\.deleted@']  # Default pattern changed to match BOFA .deleted@ format
