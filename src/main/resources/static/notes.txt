@@ -1,3 +1,159 @@
+from jira import JIRA
+import pandas as pd
+import os
+from datetime import datetime
+import concurrent.futures
+from typing import Dict, List, Any
+import time
+from tqdm import tqdm
+
+def connect_to_jira(jira_server: str, username: str, api_token: str) -> JIRA:
+    """
+    Connect to JIRA instance using basic authentication
+    """
+    try:
+        jira = JIRA(server=jira_server, basic_auth=(username, api_token))
+        return jira
+    except Exception as e:
+        print(f"Failed to connect to JIRA: {str(e)}")
+        return None
+
+def format_comments(comments: List[Any]) -> str:
+    """
+    Format comments with delimiter and user information
+    Comments are sorted chronologically with oldest first
+    """
+    if not comments:
+        return ""
+
+    formatted_comments = []
+    delimiter = "================\n"
+
+    # Sort comments by created date
+    sorted_comments = sorted(comments, key=lambda x: x.created)
+
+    for comment in sorted_comments:
+        comment_text = f"Author: {comment.author.displayName}\n"
+        comment_text += f"Date: {comment.created}\n"
+        comment_text += f"Comment:\n{comment.body}\n"
+        formatted_comments.append(comment_text)
+
+    return delimiter.join(formatted_comments)
+
+def process_single_ticket(args: tuple) -> Dict[str, str]:
+    """
+    Process a single JIRA ticket
+    Returns a dictionary with ticket data
+    """
+    ticket_id, jira_server, username, api_token = args
+
+    try:
+        # Create a new JIRA connection for each thread
+        jira = connect_to_jira(jira_server, username, api_token)
+        if not jira:
+            return {
+                'ticket_id': ticket_id,
+                'summary': 'ERROR - Connection Failed',
+                'description': 'ERROR - Connection Failed',
+                'comments': 'ERROR - Connection Failed'
+            }
+
+        issue = jira.issue(ticket_id)
+
+        # Get comments
+        comments = jira.comments(issue)
+        formatted_comments = format_comments(comments)
+
+        return {
+            'ticket_id': ticket_id,
+            'summary': issue.fields.summary,
+            'description': issue.fields.description or "",
+            'comments': formatted_comments
+        }
+
+    except Exception as e:
+        return {
+            'ticket_id': ticket_id,
+            'summary': f'ERROR: {str(e)}',
+            'description': f'ERROR: {str(e)}',
+            'comments': f'ERROR: {str(e)}'
+        }
+
+def process_jira_tickets(jira_server: str, username: str, api_token: str,
+                        input_csv: str, output_excel: str, max_workers: int = 10):
+    """
+    Main function to process JIRA tickets in parallel and create Excel output
+    """
+    try:
+        # Read ticket IDs from CSV
+        df = pd.read_csv(input_csv)
+        ticket_column = df.columns[0]  # Assume first column contains ticket IDs
+        ticket_ids = df[ticket_column].tolist()
+
+        # Prepare arguments for parallel processing
+        args_list = [(ticket_id, jira_server, username, api_token)
+                    for ticket_id in ticket_ids]
+
+        results = []
+
+        # Process tickets in parallel with progress bar
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(process_single_ticket, args)
+                      for args in args_list]
+
+            # Show progress bar
+            for future in tqdm(concurrent.futures.as_completed(futures),
+                             total=len(ticket_ids),
+                             desc="Processing tickets"):
+                results.append(future.result())
+
+        # Sort results by original ticket order
+        ticket_id_to_index = {tid: idx for idx, tid in enumerate(ticket_ids)}
+        results.sort(key=lambda x: ticket_id_to_index[x['ticket_id']])
+
+        # Create output DataFrame
+        output_df = pd.DataFrame({
+            'Ticket ID': [r['ticket_id'] for r in results],
+            'Summary': [r['summary'] for r in results],
+            'Description': [r['description'] for r in results],
+            'Comments': [r['comments'] for r in results]
+        })
+
+        # Write to Excel
+        output_df.to_excel(output_excel, index=False, engine='openpyxl')
+        print(f"\nSuccessfully created Excel file: {output_excel}")
+
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+
+if __name__ == "__main__":
+    # Configuration
+    JIRA_SERVER = "https://your-jira-instance.com"
+    USERNAME = "your-username"
+    API_TOKEN = "your-api-token"
+
+    # File paths
+    INPUT_CSV = "jira_tickets.csv"
+    OUTPUT_EXCEL = f"jira_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+    # Number of parallel workers
+    MAX_WORKERS = 10  # Adjust based on your system capabilities and JIRA rate limits
+
+    # Run the process
+    start_time = time.time()
+    process_jira_tickets(
+        JIRA_SERVER,
+        USERNAME,
+        API_TOKEN,
+        INPUT_CSV,
+        OUTPUT_EXCEL,
+        MAX_WORKERS
+    )
+    end_time = time.time()
+
+    print(f"Total processing time: {end_time - start_time:.2f} seconds")
+
+
 GIVEN
 
 The current source code contains hard-coded secrets (such as API keys, passwords) and a hard-coded nbkid identifier.
