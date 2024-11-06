@@ -1,3 +1,71 @@
+import os
+import platform
+import subprocess
+import sys
+
+def set_env_variable_windows(var, value):
+    try:
+        # Use setx to set the environment variable for the current user
+        subprocess.run(['setx', var, value], check=True)
+        print(f"Set {var}={value} permanently for the user on Windows.")
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to set {var} on Windows: {e}")
+
+def set_env_variable_linux(var, value):
+    bashrc_path = os.path.expanduser("~/.bashrc")
+    export_line = f'\nexport {var}="{value}"\n'
+    
+    # Check if the variable already exists in .bashrc
+    if os.path.exists(bashrc_path):
+        with open(bashrc_path, 'r') as file:
+            lines = file.readlines()
+        
+        for i, line in enumerate(lines):
+            if line.startswith(f'export {var}='):
+                lines[i] = export_line
+                break
+        else:
+            lines.append(export_line)
+    else:
+        lines = [export_line]
+    
+    # Append or modify the .bashrc file
+    with open(bashrc_path, 'w') as file:
+        file.writelines(lines)
+    
+    print(f"Set {var}={value} permanently in {bashrc_path}.")
+    print("Run `source ~/.bashrc` or restart your terminal to apply changes.")
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: python set_env_vars.py VAR1=VALUE1 VAR2=VALUE2 ...")
+        sys.exit(1)
+    
+    # Parse key=value pairs from command-line arguments
+    env_vars = {}
+    for arg in sys.argv[1:]:
+        if '=' in arg:
+            key, value = arg.split('=', 1)
+            env_vars[key] = value
+        else:
+            print(f"Invalid argument '{arg}'. Expected format VAR=VALUE.")
+            sys.exit(1)
+    
+    current_os = platform.system()
+    
+    if current_os == "Windows":
+        for var, value in env_vars.items():
+            set_env_variable_windows(var, value)
+    elif current_os in ["Linux", "Darwin"]:  # Darwin for macOS
+        for var, value in env_vars.items():
+            set_env_variable_linux(var, value)
+    else:
+        print(f"Unsupported OS: {current_os}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+
 from jira import JIRA
 import pandas as pd
 import os
