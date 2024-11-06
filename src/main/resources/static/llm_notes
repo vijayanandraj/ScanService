@@ -1,3 +1,5 @@
+['"][a-zA-Z0-9]{7}['"]
+
 [build-system]
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
