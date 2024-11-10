@@ -1,3 +1,139 @@
+# config.py
+import os
+import json
+from typing import Dict, Any
+from pathlib import Path
+
+def load_env_specific_values(env: str = None) -> Dict[str, Any]:
+    """
+    Load environment-specific values from JSON file.
+    If env is None, defaults are used (for local development)
+    """
+    if env is None:
+        env = os.getenv('JIRA_ENV', 'dev')
+
+    config_path = Path(__file__).parent / "config" / f"{env}.json"
+
+    # Default values (can be overridden by environment variables)
+    defaults = {
+        'PROJECT_KEY': 'DEFAULT_PROJECT',
+        'JIRA_EPIC_KEY': 'DEFAULT_EPIC',
+        'TEAMHQ_TEAM': '123810',  # dev default
+        'IMPACTED_AITS': ['91674'],  # dev default
+        'ASSIGNEE': None,
+        'PEOPLE_TESTING_DEPENDENCY': None,
+        'TEST_CASE_TOOLS': None
+    }
+
+    # Load from JSON if exists
+    if config_path.exists():
+        with open(config_path) as f:
+            env_config = json.load(f)
+            defaults.update(env_config)
+
+    # Environment variables override JSON
+    env_vars = {
+        'PROJECT_KEY': os.getenv('JIRA_PROJECT_KEY'),
+        'JIRA_EPIC_KEY': os.getenv('JIRA_EPIC_KEY'),
+        'TEAMHQ_TEAM': os.getenv('JIRA_TEAMHQ_TEAM'),
+        'IMPACTED_AITS': os.getenv('JIRA_IMPACTED_AITS', '').split(',') if os.getenv('JIRA_IMPACTED_AITS') else None,
+        'ASSIGNEE': os.getenv('JIRA_ASSIGNEE'),
+        'PEOPLE_TESTING_DEPENDENCY': os.getenv('JIRA_PEOPLE_TESTING_DEP', '').split(',') if os.getenv('JIRA_PEOPLE_TESTING_DEP') else None,
+        'TEST_CASE_TOOLS': os.getenv('JIRA_TEST_CASE_TOOLS', '').split(',') if os.getenv('JIRA_TEST_CASE_TOOLS') else None
+    }
+
+    # Update only if environment variable is set
+    for key, value in env_vars.items():
+        if value is not None:
+            defaults[key] = value
+
+    return defaults
+
+def get_field_config() -> Dict[str, Dict]:
+    """
+    Get the field configuration with environment-specific values
+    """
+    env_values = load_env_specific_values()
+
+    static_fields = {
+        'project': {'key': env_values['PROJECT_KEY']},
+        'Issue Type': {'name': 'Story'},
+        'Acceptance Criteria': 'Given a Bank technologist requires assistance\n'
+                             'When the user provides the issue details\n'
+                             'Then the EDT developer helps in assisting the user in remediating their issue',
+        'Priority': {'name': 'Trivial'},
+        'Story Type': {'value': 'Enabler'},
+        'Data Testing Dependency': [{'value': 'Not Applicable'}],
+        'Activity Categories': {
+            'value': 'L3',
+            'child': {
+                'value': 'Research and Respond to Application, Enterprise, External Regulatory or Audit Inquiries'
+            }
+        },
+        'Story Points': 1,
+        'TeamHQ Team': env_values['TEAMHQ_TEAM'],
+        'Epic Link': env_values['JIRA_EPIC_KEY'],
+        'Impacted AIT\'s': env_values['IMPACTED_AITS'],
+        'Test Scope': {'value': 'No Testing'},
+        'No Testing Justification': {'value': 'Other'},
+        'No Testing Justification Other': 'No Testing is required'
+    }
+
+    # Add environment-specific fields only if they exist
+    if env_values['ASSIGNEE']:
+        static_fields['Assignee'] = {'name': env_values['ASSIGNEE']}
+
+    if env_values['PEOPLE_TESTING_DEPENDENCY']:
+        static_fields['People Testing Dependency'] = [
+            {'value': dep} for dep in env_values['PEOPLE_TESTING_DEPENDENCY']
+        ]
+
+    if env_values['TEST_CASE_TOOLS']:
+        static_fields['Test Case Management Tools'] = [
+            {'value': tool} for tool in env_values['TEST_CASE_TOOLS']
+        ]
+
+    return {
+        'static_fields': static_fields,
+        'dynamic_fields': {
+            'Summary': 'Summary',
+            'Description': 'Description',
+            'Labels': 'Labels'
+        }
+    }
+
+# The main configuration object
+field_config = get_field_config()
+
+# Example environment-specific JSON files
+PROD_JSON = {
+    "PROJECT_KEY": "PROD_KEY",
+    "JIRA_EPIC_KEY": "PROD_EPIC",
+    "TEAMHQ_TEAM": "123809",
+    "IMPACTED_AITS": ["91673"],
+    "ASSIGNEE": "zk9écvk",
+    "PEOPLE_TESTING_DEPENDENCY": ["VY -- GLOBAL TECHNOLOGY AND OPERATIONS"],
+    "TEST_CASE_TOOLS": ["Not Applicable"]
+}
+
+DEV_JSON = {
+    "PROJECT_KEY": "DEV_KEY",
+    "JIRA_EPIC_KEY": "DEV_EPIC",
+    "TEAMHQ_TEAM": "123810",
+    "IMPACTED_AITS": ["91674"]
+}
+
+# Create example config files if running directly
+if __name__ == "__main__":
+    config_dir = Path(__file__).parent / "config"
+    config_dir.mkdir(exist_ok=True)
+
+    with open(config_dir / "prod.json", "w") as f:
+        json.dump(PROD_JSON, f, indent=2)
+
+    with open(config_dir / "dev.json", "w") as f:
+        json.dump(DEV_JSON, f, indent=2)
+
 import os
 import platform
 import subprocess
