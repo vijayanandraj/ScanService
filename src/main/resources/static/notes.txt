@@ -1,3 +1,20 @@
+PROD_JSON = {
+    "PROJECT_KEY": "PROD_KEY",
+    "JIRA_EPIC_KEY": "PROD_EPIC",
+    "TEAMHQ_TEAM": "123809",
+    "IMPACTED_AITS": ["91673"],
+    "ASSIGNEE": "zk9écvk",
+    "PEOPLE_TESTING_DEPENDENCY": ["VY -- GLOBAL TECHNOLOGY AND OPERATIONS"],
+    "TEST_CASE_TOOLS": ["Not Applicable"]
+}
+
+DEV_JSON = {
+    "PROJECT_KEY": "DEV_KEY",
+    "JIRA_EPIC_KEY": "DEV_EPIC",
+    "TEAMHQ_TEAM": "123810",
+    "IMPACTED_AITS": ["91674"]
+}
+
 # config.py
 import os
 import json
