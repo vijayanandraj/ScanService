@@ -1,3 +1,61 @@
+def is_undelivered_notification(email):
+    """Check if email is an undelivery notification based on content analysis"""
+    content = email.text_body.lower() if hasattr(email, 'text_body') else ''
+
+    undelivery_patterns = [
+        "delivery has failed to these recipients or groups",
+        "recipient not found by exchange legacy encapsulated email address lookup",
+        "resolver.adr.exrecipnotfound",
+        "the email address you entered couldn't be found",
+        "diagnostic information for administrators:",
+        "remote server returned '550"
+    ]
+
+    return any(pattern in content.lower() for pattern in undelivery_patterns)
+
+
+Key Questions to Ask During KT
+Configuration and Structure
+
+What is the overall structure of our devcontainer configuration?
+Which base images are we using, and why were they selected?
+Dependencies and Tools
+
+How are dependencies managed and installed within the devcontainer?
+What VS Code extensions and other tools are pre-installed, and are they essential for all team members?
+Environment Management
+
+How do we handle environment variables and sensitive information within the devcontainer?
+Are there specific scripts or tooling that automate parts of the setup?
+Workflow Integration
+
+How does the devcontainer integrate with our existing CI/CD pipelines?
+What is the process for onboarding new team members using the devcontainer?
+Maintenance and Updates
+
+How are updates to the devcontainer (e.g., base image updates, dependency upgrades) managed and communicated?
+Is there a schedule or trigger for reviewing and updating the devcontainer setup?
+Best Practices and Standards
+
+What best practices are we following to ensure consistency and security in our devcontainer configurations?
+Are there any coding or configuration standards specific to our devcontainer setup?
+Troubleshooting and Support
+
+What are the most common issues encountered with our devcontainer, and how are they resolved?
+Where can I find documentation or resources for troubleshooting devcontainer-related problems?
+Customization and Extensibility
+
+How can I customize the devcontainer for specific project needs without disrupting the standard setup?
+Are there guidelines for adding new tools or dependencies to the devcontainer?
+Performance and Optimization
+
+What measures are in place to ensure the devcontainer performs efficiently?
+Are there any known performance bottlenecks or areas for improvement?
+Collaboration and Sharing
+
+How do we share devcontainer configurations across different projects or teams?
+Is there a centralized repository or standard template that we use for devcontainers?
+
 def convert_plain_to_html(plain_text):
     """Convert plain text to HTML format using pre tag."""
     if not plain_text:
