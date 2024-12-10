@@ -1,3 +1,420 @@
+# issue_grouping.py
+
+import pandas as pd
+import sqlite3
+from sentence_transformers import SentenceTransformer
+from sklearn.cluster import AgglomerativeClustering
+from transformers import T5Tokenizer, T5ForConditionalGeneration, pipeline
+import language_tool_python
+from autocorrect import Speller
+import os
+import gc  # Garbage collector to free up memory
+from tqdm import tqdm  # Progress bar
+
+# Initialize spell checkers
+language_tool = language_tool_python.LanguageTool('en-US')
+spell = Speller(lang='en')
+
+def correct_spelling(text):
+    """
+    Correct spelling errors in the given text using LanguageTool and Autocorrect.
+
+    Args:
+        text (str): Text to be corrected.
+
+    Returns:
+        corrected_text (str): Corrected text.
+    """
+    # Correct using LanguageTool
+    matches = language_tool.check(text)
+    corrected_text = language_tool_python.utils.correct(text, matches)
+
+    # Further correct using Autocorrect
+    corrected_text = spell(corrected_text)
+
+    return corrected_text
+
+def load_summarizer(model_name='t5-small', model_path=None):
+    """
+    Load the T5 model and tokenizer from Hugging Face or a local directory.
+
+    Args:
+        model_name (str): Name of the Hugging Face model.
+        model_path (str): Path to the local directory containing the model.
+
+    Returns:
+        summarizer (pipeline): Hugging Face summarization pipeline.
+    """
+    if model_path and os.path.exists(model_path):
+        tokenizer = T5Tokenizer.from_pretrained(model_path)
+        model = T5ForConditionalGeneration.from_pretrained(model_path)
+    else:
+        tokenizer = T5Tokenizer.from_pretrained(model_name)
+        model = T5ForConditionalGeneration.from_pretrained(model_name)
+
+    summarizer = pipeline("summarization", model=model, tokenizer=tokenizer, device=0 if torch.cuda.is_available() else -1)
+    return summarizer
+
+def deduplicate_questions(questions):
+    """
+    Remove exact duplicate questions.
+
+    Args:
+        questions (list): List of question strings.
+
+    Returns:
+        unique_questions (list): List of unique question strings.
+    """
+    seen = set()
+    unique_questions = []
+    for q in questions:
+        q_clean = q.lower().strip()
+        if q_clean not in seen:
+            unique_questions.append(q)
+            seen.add(q_clean)
+    return unique_questions
+
+def format_questions_for_summarization(questions):
+    """
+    Format the list of questions into a single string with clear separation and instructions.
+
+    Args:
+        questions (list): List of question strings.
+
+    Returns:
+        formatted_text (str): Formatted string for summarization.
+    """
+    # Clear Instruction with Bullet Points
+    formatted_questions = "\n".join([f"- {q}" for q in questions])
+    formatted_text = f"Please provide a concise and descriptive summary for the following issues:\n{formatted_questions}"
+    return formatted_text
+
+def summarize_questions(summarizer, questions):
+    """
+    Generate a summary for a list of similar questions.
+
+    Args:
+        summarizer (pipeline): Hugging Face summarization pipeline.
+        questions (list): List of question strings.
+
+    Returns:
+        summary (str): Generated and corrected summary string.
+    """
+    # Deduplicate questions
+    unique_questions = deduplicate_questions(questions)
+
+    # Handle cases where all questions are identical or nearly identical
+    if len(unique_questions) == 1:
+        return unique_questions[0]
+
+    # Format questions
+    input_text = format_questions_for_summarization(unique_questions)
+
+    try:
+        # Generate summary
+        summary = summarizer(
+            input_text,
+            max_length=100,           # Adjusted for concise summaries
+            min_length=30,            # Adjusted for concise summaries
+            num_beams=4,              # Beam search for better quality
+            early_stopping=True,
+            no_repeat_ngram_size=3,   # Prevent repetition
+            do_sample=False
+        )
+
+        # Extract summary text
+        summary_text = summary[0]['summary_text']
+
+        # Correct spelling
+        corrected_summary = correct_spelling(summary_text)
+
+        return corrected_summary
+    except Exception as e:
+        print(f"Error during summarization: {e}")
+        return "Summary generation failed."
+
+def cluster_issues(embeddings, distance_threshold=0.5):
+    """
+    Cluster issues based on embeddings using Agglomerative Clustering.
+
+    Args:
+        embeddings (ndarray): Array of embeddings.
+        distance_threshold (float): The linkage distance threshold above which clusters will not be merged.
+
+    Returns:
+        cluster_labels (list): List of cluster labels for each issue.
+    """
+    try:
+        clustering_model = AgglomerativeClustering(
+            n_clusters=None,
+            affinity='cosine',
+            linkage='average',
+            distance_threshold=distance_threshold
+        )
+        cluster_labels = clustering_model.fit_predict(embeddings)
+        return cluster_labels
+    except Exception as e:
+        print(f"Error in clustering: {e}")
+        return None
+
+def create_database(db_path='issues.db'):
+    """
+    Create SQLite database and necessary tables.
+
+    Args:
+        db_path (str): Path to the SQLite database file.
+
+    Returns:
+        conn (sqlite3.Connection): SQLite connection object.
+    """
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Create Issues table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS Issues (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            issue_short_description TEXT,
+            issue_type TEXT,
+            tool TEXT,
+            cluster_id INTEGER
+        )
+    ''')
+
+    # Create Clusters table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS Clusters (
+            cluster_id INTEGER PRIMARY KEY,
+            summary TEXT
+        )
+    ''')
+
+    conn.commit()
+    return conn
+
+def insert_data(conn, df, cluster_labels):
+    """
+    Insert issues into the Issues table.
+
+    Args:
+        conn (sqlite3.Connection): SQLite connection object.
+        df (DataFrame): Pandas DataFrame containing the issues.
+        cluster_labels (list): List of cluster labels corresponding to each issue.
+    """
+    cursor = conn.cursor()
+    batch_size = 1000  # Commit every 1000 inserts
+    data_to_insert = []
+
+    for idx, row in df.iterrows():
+        data_to_insert.append((
+            row['Issue Short Description'],
+            row['Issue Type'],
+            row['Tool'],
+            int(cluster_labels[idx]) if cluster_labels[idx] != -1 else None  # Handle noise points
+        ))
+
+        if len(data_to_insert) == batch_size:
+            cursor.executemany('''
+                INSERT INTO Issues (issue_short_description, issue_type, tool, cluster_id)
+                VALUES (?, ?, ?, ?)
+            ''', data_to_insert)
+            conn.commit()
+            data_to_insert = []
+            print(f"Inserted {idx + 1} records into Issues table.")
+
+    # Insert any remaining data
+    if data_to_insert:
+        cursor.executemany('''
+            INSERT INTO Issues (issue_short_description, issue_type, tool, cluster_id)
+            VALUES (?, ?, ?, ?)
+        ''', data_to_insert)
+        conn.commit()
+        print(f"Inserted all remaining records into Issues table.")
+
+def insert_clusters(conn, cluster_summaries, batch_size=5000):
+    """
+    Insert cluster summaries into the Clusters table in chunks.
+
+    Args:
+        conn (sqlite3.Connection): SQLite connection object.
+        cluster_summaries (dict): Dictionary mapping cluster_id to summary.
+        batch_size (int): Number of clusters to process in one batch.
+    """
+    cursor = conn.cursor()
+    cluster_items = list(cluster_summaries.items())
+    total_clusters = len(cluster_items)
+
+    for start in tqdm(range(0, total_clusters, batch_size), desc="Inserting Cluster Summaries"):
+        end = start + batch_size
+        batch = cluster_items[start:end]
+        data_to_insert = [(cid, summary) for cid, summary in batch]
+
+        cursor.executemany('''
+            INSERT OR REPLACE INTO Clusters (cluster_id, summary)
+            VALUES (?, ?)
+        ''', data_to_insert)
+        conn.commit()
+        print(f"Inserted clusters {start + 1} to {end} into Clusters table.")
+
+    print("All cluster summaries inserted successfully.")
+
+def generate_cluster_summaries(summarizer, df, cluster_labels, db_conn, chunk_size=5000):
+    """
+    Generate summaries for each cluster in chunks to manage memory usage.
+
+    Args:
+        summarizer (pipeline): Hugging Face summarization pipeline.
+        df (DataFrame): Pandas DataFrame containing the issues.
+        cluster_labels (list): List of cluster labels corresponding to each issue.
+        db_conn (sqlite3.Connection): SQLite connection object.
+        chunk_size (int): Number of clusters to process in each chunk.
+
+    Returns:
+        None
+    """
+    cluster_summaries = {}
+    clusters = {}
+
+    print("Organizing issues by cluster...")
+    for idx, label in tqdm(enumerate(cluster_labels), total=len(cluster_labels), desc="Organizing Clusters"):
+        if label not in clusters:
+            clusters[label] = []
+        clusters[label].append(df.iloc[idx]['Issue Short Description'])
+
+    # Remove noise points if any
+    if -1 in clusters:
+        del clusters[-1]
+
+    cluster_ids = list(clusters.keys())
+    total_clusters = len(cluster_ids)
+
+    print(f"Total clusters to summarize: {total_clusters}")
+
+    for i in tqdm(range(0, total_clusters, chunk_size), desc="Summarizing Clusters"):
+        batch_cluster_ids = cluster_ids[i:i + chunk_size]
+        batch_summaries = {}
+
+        for cid in batch_cluster_ids:
+            issues = clusters[cid]
+            summary = summarize_questions(summarizer, issues)
+            batch_summaries[cid] = summary
+
+        # Insert the batch summaries into the database
+        insert_clusters(db_conn, batch_summaries, batch_size=chunk_size)
+
+        # Clear the batch_summaries to free memory
+        batch_summaries.clear()
+        gc.collect()  # Garbage collect to free up memory
+
+    print("All cluster summaries generated and inserted.")
+
+def query_top_issues(conn, tool=None, issue_type=None, top_n=10):
+    """
+    Query top N issues based on Tool and/or Issue Type.
+
+    Args:
+        conn (sqlite3.Connection): SQLite connection object.
+        tool (str): Tool name to filter.
+        issue_type (str): Issue Type to filter.
+        top_n (int): Number of top issues to retrieve.
+
+    Returns:
+        results (list of tuples): Retrieved issues.
+    """
+    cursor = conn.cursor()
+    query = '''
+        SELECT Clusters.summary, COUNT(Issues.id) as issue_count
+        FROM Issues
+        JOIN Clusters ON Issues.cluster_id = Clusters.cluster_id
+    '''
+    conditions = []
+    params = []
+
+    if tool:
+        conditions.append("Issues.tool = ?")
+        params.append(tool)
+    if issue_type:
+        conditions.append("Issues.issue_type = ?")
+        params.append(issue_type)
+
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+
+    query += " GROUP BY Issues.cluster_id ORDER BY issue_count DESC LIMIT ?"
+    params.append(top_n)
+
+    cursor.execute(query, params)
+    results = cursor.fetchall()
+    return results
+
+def main():
+    # Path to your Excel file
+    excel_path = 'issues.xlsx'  # Update this path as needed
+
+    # Read Excel data
+    print("Reading Excel data...")
+    df = pd.read_excel(excel_path)
+
+    # Ensure necessary columns are present
+    required_columns = ['Issue Short Description', 'Issue Type', 'Tool']
+    if not all(col in df.columns for col in required_columns):
+        raise ValueError(f"Excel file must contain columns: {required_columns}")
+
+    # Initialize SBERT model
+    print("Loading SBERT model...")
+    sbert_model = SentenceTransformer('all-MiniLM-L6-v2')  # You can choose a different SBERT model
+
+    # Generate embeddings
+    print("Generating embeddings...")
+    embeddings = sbert_model.encode(df['Issue Short Description'].tolist(), show_progress_bar=True)
+
+    # Cluster issues
+    print("Clustering issues...")
+    cluster_labels = cluster_issues(embeddings, distance_threshold=0.5)  # Adjust threshold as needed
+    if cluster_labels is None:
+        raise RuntimeError("Clustering failed.")
+
+    # Initialize T5-small summarizer
+    print("Loading summarizer...")
+    summarizer = load_summarizer(model_name='t5-small')  # Use model_path if using local model
+
+    # Create SQLite database
+    print("Creating database...")
+    conn = create_database('issues.db')  # Update path as needed
+
+    # Insert issues into database
+    print("Inserting issues into database...")
+    insert_data(conn, df, cluster_labels)
+
+    # Generate and insert cluster summaries in chunks
+    print("Generating and inserting cluster summaries...")
+    generate_cluster_summaries(summarizer, df, cluster_labels, conn, chunk_size=5000)
+
+    print("Data insertion complete.")
+
+    # Example Queries
+    print("\n=== Example Queries ===\n")
+
+    # Top 10 issues for Bitbucket
+    print("Top 10 Issues for Tool: Bitbucket")
+    top_bitbucket = query_top_issues(conn, tool='Bitbucket', top_n=10)
+    for summary, count in top_bitbucket:
+        print(f"Summary: {summary}\nCount: {count}\n")
+
+    # Top 10 issues for Jira3 and Access Issue
+    print("Top 10 Issues for Tool: Jira3 and Issue Type: Access Issue")
+    top_jira3_access = query_top_issues(conn, tool='Jira3', issue_type='Access Issue', top_n=10)
+    for summary, count in top_jira3_access:
+        print(f"Summary: {summary}\nCount: {count}\n")
+
+    # Close the database connection
+    conn.close()
+    print("Database connection closed.")
+
+if __name__ == "__main__":
+    main()
+
+
 Establishing a Java Center of Excellence (CoE) is a strategic initiative that can significantly enhance your organization's Java capabilities, streamline development processes, and foster innovation. Adopting a **Crawl-Walk-Run** approach ensures a structured and scalable implementation. Below is a comprehensive guide to help you anchor your Java CoE effectively.
 
 ---
